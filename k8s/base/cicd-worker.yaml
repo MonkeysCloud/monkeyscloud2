@@ -1,0 +1,76 @@
+# =============================================================================
+# MonkeysCloud CI/CD Worker — GKE Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-worker
+  namespace: monkeyscloud-system
+  labels:
+    app: cicd-worker
+    app.kubernetes.io/name: monkeyscloud-cicd
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cicd-worker
+  template:
+    metadata:
+      labels:
+        app: cicd-worker
+    spec:
+      serviceAccountName: monkeyscloud-cicd
+      containers:
+        - name: cicd-worker
+          image: REGION-docker.pkg.dev/PROJECT/mc-platform/cicd-worker:latest
+          envFrom:
+            - configMapRef:
+                name: api-config
+            - secretRef:
+                name: api-secrets
+          env:
+            - name: GIT_REPOS_PATH
+              value: /var/lib/git
+            - name: REGISTRY_URL
+              value: "REGION-docker.pkg.dev/PROJECT/mc-customers"
+          volumeMounts:
+            - name: git-repos
+              mountPath: /var/lib/git
+              readOnly: true
+            - name: cicd-workspace
+              mountPath: /var/lib/cicd
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+      volumes:
+        - name: git-repos
+          persistentVolumeClaim:
+            claimName: git-repos-pvc
+        - name: cicd-workspace
+          emptyDir:
+            sizeLimit: 10Gi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cicd-worker-hpa
+  namespace: monkeyscloud-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cicd-worker
+  minReplicas: 2
+  maxReplicas: 15
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

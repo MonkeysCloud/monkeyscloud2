@@ -1,0 +1,52 @@
+# =============================================================================
+# MonkeysCloud — Kustomize Production Overlay
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monkeyscloud-production
+
+resources:
+  - ../../base
+  - api-config.yaml
+  - api-secrets.yaml
+  - dashboard-config.yaml
+  - git-config.yaml
+
+namePrefix: prod-
+
+images:
+  - name: REGION-docker.pkg.dev/PROJECT/mc-platform/api
+    newName: us-central1-docker.pkg.dev/monkeyscloud2/mc-platform/api
+    newTag: latest
+  - name: REGION-docker.pkg.dev/PROJECT/mc-platform/dashboard
+    newName: us-central1-docker.pkg.dev/monkeyscloud2/mc-platform/dashboard
+    newTag: latest
+  - name: REGION-docker.pkg.dev/PROJECT/mc-platform/git-server
+    newName: us-central1-docker.pkg.dev/monkeyscloud2/mc-platform/git-server
+    newTag: latest
+  - name: REGION-docker.pkg.dev/PROJECT/mc-platform/cicd-worker
+    newName: us-central1-docker.pkg.dev/monkeyscloud2/mc-platform/cicd-worker
+    newTag: latest
+
+patches:
+  # Production: 3 replicas for API
+  - target:
+      kind: Deployment
+      name: api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  # Production: 3 replicas for Dashboard
+  - target:
+      kind: Deployment
+      name: dashboard
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+commonLabels:
+  environment: production

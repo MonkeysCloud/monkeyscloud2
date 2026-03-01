@@ -1,0 +1,51 @@
+# =============================================================================
+# MONKEYSCLOUD — Docker Compose Override (Development)
+# =============================================================================
+# This file is automatically loaded alongside docker-compose.yml.
+# It adds dev-specific overrides: extra debugging, relaxed settings, etc.
+# =============================================================================
+
+services:
+
+  api:
+    environment:
+      APP_DEBUG: "true"
+      PHP_IDE_CONFIG: "serverName=monkeyscloud"    # Xdebug support
+      XDEBUG_MODE: "off"                           # Set to 'debug' to enable
+      XDEBUG_CONFIG: "client_host=host.docker.internal"
+    # Override entrypoint for dev: start in watch mode
+    entrypoint: ["frankenphp", "php-server", "--listen", ":8000", "--no-compress"]
+
+  dashboard:
+    environment:
+      WATCHPACK_POLLING: "true"                    # File watching in Docker
+      CHOKIDAR_USEPOLLING: "true"                  # Alternative file watcher
+    # Ensure hot reload works with Docker volumes
+    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+
+  git-server:
+    environment:
+      APP_ENV: "local"
+      GODEBUG: "http2debug=0"
+
+  cicd-worker:
+    environment:
+      APP_DEBUG: "true"
+      CICD_WORKER_CONCURRENCY: "1"                 # Lower concurrency for dev
+
+  mysql:
+    # Expose on host for GUI tools (TablePlus, DBeaver, etc.)
+    ports:
+      - "3306:3306"
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --log-bin-trust-function-creators=1
+      --general-log=1
+      --general-log-file=/var/log/mysql/general.log
+
+  redis:
+    # Expose on host for redis-cli or GUI tools
+    ports:
+      - "6379:6379"

@@ -1,0 +1,97 @@
+# =============================================================================
+# .monkeyscloud.yml — Customer CI/CD Pipeline Configuration
+# =============================================================================
+# This is a TEMPLATE showing the customer-facing pipeline config format.
+# Customers place this file in their repo root to customize builds/deploys.
+# If not present, MonkeysCloud auto-generates from stack detection.
+# =============================================================================
+
+version: 1
+
+# Stack override (auto-detected if omitted)
+# stack: monkeyslegion | laravel | wordpress | drupal | nextjs | nuxtjs |
+#        react | vue | django | fastapi | flask | rails | go | rust | static | docker
+
+# Build configuration
+build:
+  # Runtime versions (auto-detected from lock files if omitted)
+  # php_version: "8.4"
+  # node_version: "22"
+  # python_version: "3.13"
+
+  # Commands (auto-detected from stack if omitted)
+  # install: "composer install --no-dev --optimize-autoloader"
+  # build: "npm run build"
+  # test: "vendor/bin/phpunit"
+
+  # Custom pipeline steps (run AFTER standard steps)
+  custom_steps:
+    # - name: "Security Audit"
+    #   command: "composer audit"
+    # - name: "Static Analysis"
+    #   command: "vendor/bin/phpstan analyse --level=max"
+    # - name: "Lint"
+    #   command: "vendor/bin/phpcs"
+
+  # Environment variables available during build
+  # build_env:
+  #   NODE_OPTIONS: "--max-old-space-size=4096"
+
+  # Cache directories (speeds up subsequent builds)
+  # cache:
+  #   - vendor/
+  #   - node_modules/
+  #   - .next/cache/
+
+# Deploy configuration
+deploy:
+  # Deploy strategy
+  strategy: rolling          # rolling | blue_green | canary
+
+  # Auto-deploy on push to matching branch
+  auto_deploy: true
+
+  # Environment definitions
+  environments:
+    staging:
+      branch: develop         # Branch that triggers staging deploy
+      replicas: 1
+      # env_vars:
+      #   APP_ENV: staging
+    production:
+      branch: main            # Branch that triggers production deploy
+      replicas: 2
+      require_approval: true  # Manual approval before production deploy
+      # env_vars:
+      #   APP_ENV: production
+
+  # Health check (used to verify successful deploy)
+  health_check:
+    path: /health
+    interval: 10s
+    timeout: 5s
+    retries: 3
+
+  # Rollback settings
+  rollback:
+    auto_rollback: true       # Auto-rollback if health check fails
+    error_threshold: 5        # Error rate percentage that triggers rollback
+
+# AI features (requires AI-enabled plan)
+ai:
+  code_review: true           # AI code review on PRs
+  pr_summary: true            # Auto-generate PR descriptions
+  deploy_risk: true           # Pre-deploy risk assessment
+  build_analysis: true        # AI root cause on build failures
+
+# Notifications
+notifications:
+  # slack:
+  #   webhook: $SLACK_WEBHOOK_URL
+  #   events: [build.failed, deploy.completed, deploy.failed]
+  # email:
+  #   to: [team@example.com]
+  #   events: [build.failed, deploy.failed]
+  # webhook:
+  #   url: https://example.com/webhooks/monkeyscloud
+  #   events: [build.completed, deploy.completed]

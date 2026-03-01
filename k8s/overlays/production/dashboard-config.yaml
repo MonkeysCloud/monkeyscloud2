@@ -1,0 +1,16 @@
+# =============================================================================
+# MonkeysCloud — Dashboard ConfigMap (Production)
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-config
+  namespace: monkeyscloud-production
+  labels:
+    app: dashboard
+    environment: production
+data:
+  NODE_ENV: "production"
+  NEXT_PUBLIC_API_URL: "https://api.monkeys.cloud"
+  NEXT_PUBLIC_APP_URL: "https://monkeys.cloud"
+  NEXT_PUBLIC_GIT_URL: "https://git.monkeys.cloud"

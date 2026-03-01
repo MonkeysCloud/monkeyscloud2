@@ -1,0 +1,306 @@
+# =============================================================================
+# MONKEYSCLOUD — Docker Compose (Local Development)
+# =============================================================================
+# Usage:
+#   cp .env.example .env
+#   docker compose up -d
+#   docker compose logs -f
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # INFRASTRUCTURE SERVICES
+  # ---------------------------------------------------------------------------
+
+  mysql:
+    image: mysql:8.4
+    container_name: mc-mysql
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootsecret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-monkeyscloud}
+      MYSQL_USER: ${MYSQL_USER:-monkeyscloud}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secret}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootsecret}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: mc-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  minio:
+    image: minio/minio:latest
+    container_name: mc-minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monkeyscloud}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret}
+    volumes:
+      - minio-data:/data
+    networks:
+      - mc-net
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mc-mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "1025:1025"
+    networks:
+      - mc-net
+
+  registry:
+    image: registry:2
+    container_name: mc-registry
+    restart: unless-stopped
+    ports:
+      - "${REGISTRY_PORT:-5000}:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    networks:
+      - mc-net
+
+  # ---------------------------------------------------------------------------
+  # APPLICATION SERVICES
+  # ---------------------------------------------------------------------------
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: mc-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_HOST: ${MYSQL_HOST:-mysql}
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE:-monkeyscloud}
+      DB_USERNAME: ${MYSQL_USER:-monkeyscloud}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-secret}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: 6379
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: 1025
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monkeyscloud}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret}
+    volumes:
+      - ./api:/app                    # Hot reload: mount source code
+      - api-vendor:/app/vendor        # Persist vendor for performance
+      - api-var:/app/var              # Cache, logs, tmp
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard/Dockerfile
+    container_name: mc-dashboard
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_GIT_URL: ${NEXT_PUBLIC_GIT_URL:-http://localhost:3001}
+      NODE_ENV: development
+    volumes:
+      - ./dashboard:/app              # Hot reload: mount source code
+      - dashboard-node-modules:/app/node_modules  # Persist node_modules
+      - dashboard-next:/app/.next     # Persist .next build cache
+    depends_on:
+      - api
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  git-server:
+    build:
+      context: .
+      dockerfile: docker/git-server/Dockerfile
+    container_name: mc-git-server
+    restart: unless-stopped
+    ports:
+      - "${GIT_PORT:-3001}:3001"
+      - "50051:50051"                 # gRPC port for platform API
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      GIT_HTTP_PORT: "3001"
+      GIT_GRPC_PORT: "50051"
+      GIT_REPOS_PATH: /var/lib/git
+      PLATFORM_API_URL: http://api:8000
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: 6379
+    volumes:
+      - git-repos:/var/lib/git        # Bare Git repositories
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  cicd-worker:
+    build:
+      context: .
+      dockerfile: docker/cicd/Dockerfile
+    container_name: mc-cicd-worker
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DB_HOST: ${MYSQL_HOST:-mysql}
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE:-monkeyscloud}
+      DB_USERNAME: ${MYSQL_USER:-monkeyscloud}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-secret}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: 6379
+      DOCKER_HOST: unix:///var/run/docker.sock
+      REGISTRY_URL: http://registry:5000
+      GIT_REPOS_PATH: /var/lib/git
+    volumes:
+      - ./api:/app                    # Shares codebase with API
+      - git-repos:/var/lib/git:ro     # Read bare repos (read-only)
+      - cicd-builds:/var/lib/cicd     # Build workspace
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      registry:
+        condition: service_started
+    networks:
+      - mc-net
+
+  # ---------------------------------------------------------------------------
+  # REVERSE PROXY
+  # ---------------------------------------------------------------------------
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    container_name: mc-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro    # Hot reload nginx configs
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - dashboard
+      - git-server
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+# =============================================================================
+# VOLUMES — All data persists locally across restarts
+# =============================================================================
+volumes:
+  mysql-data:
+    driver: local
+    name: mc-mysql-data
+  redis-data:
+    driver: local
+    name: mc-redis-data
+  minio-data:
+    driver: local
+    name: mc-minio-data
+  registry-data:
+    driver: local
+    name: mc-registry-data
+  git-repos:
+    driver: local
+    name: mc-git-repos
+  api-vendor:
+    driver: local
+    name: mc-api-vendor
+  api-var:
+    driver: local
+    name: mc-api-var
+  dashboard-node-modules:
+    driver: local
+    name: mc-dashboard-node-modules
+  dashboard-next:
+    driver: local
+    name: mc-dashboard-next
+  cicd-builds:
+    driver: local
+    name: mc-cicd-builds
+
+# =============================================================================
+# NETWORK
+# =============================================================================
+networks:
+  mc-net:
+    driver: bridge
+    name: mc-network

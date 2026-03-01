@@ -1,0 +1,31 @@
+# =============================================================================
+# MonkeysCloud — API ConfigMap (Production)
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: monkeyscloud-production
+  labels:
+    app: api
+    environment: production
+data:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "https://api.monkeys.cloud"
+  DB_HOST: ""        # Injected by Terraform output (Cloud SQL private IP)
+  DB_PORT: "3306"
+  DB_DATABASE: "monkeyscloud"
+  REDIS_HOST: ""     # Injected by Terraform output (Memorystore IP)
+  REDIS_PORT: "6379"
+  MAIL_HOST: "smtp.mailgun.org"
+  MAIL_PORT: "587"
+  MINIO_ENDPOINT: "storage.googleapis.com"
+  REGISTRY_URL: "us-central1-docker.pkg.dev/monkeyscloud2/mc-customers"
+  GCP_PROJECT_ID: "monkeyscloud2"
+  GCP_REGION: "us-central1"
+  VERTEX_AI_MODEL: "gemini-2.0-flash"
+  LOG_LEVEL: "warning"
+  QUEUE_CONNECTION: "redis"
+  CACHE_DRIVER: "redis"
+  SESSION_DRIVER: "redis"

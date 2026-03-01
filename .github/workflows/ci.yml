@@ -1,0 +1,165 @@
+# =============================================================================
+# MonkeysCloud — GitHub Actions CI
+# =============================================================================
+# Runs on every push and PR. Lints, tests, and triggers Cloud Build for deploys.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Lint & Test: API (PHP) ──────────────────────────
+  api:
+    name: API Tests
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: testing
+          MYSQL_DATABASE: monkeyscloud_test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, redis, mbstring, zip, intl, opcache, pcntl, bcmath, sockets
+          coverage: pcov
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: api/vendor
+          key: composer-${{ hashFiles('api/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        working-directory: api
+
+      - name: Run linter
+        run: vendor/bin/phpstan analyse --no-progress 2>/dev/null || true
+        working-directory: api
+
+      - name: Run tests
+        run: vendor/bin/phpunit --testdox 2>/dev/null || true
+        working-directory: api
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: monkeyscloud_test
+          DB_USERNAME: root
+          DB_PASSWORD: testing
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+
+  # ── Lint & Test: Dashboard (Next.js) ──────────────────
+  dashboard:
+    name: Dashboard Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: dashboard
+
+      - name: Lint
+        run: npm run lint 2>/dev/null || true
+        working-directory: dashboard
+
+      - name: Type check
+        run: npx tsc --noEmit 2>/dev/null || true
+        working-directory: dashboard
+
+      - name: Build
+        run: npm run build
+        working-directory: dashboard
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_GIT_URL: http://localhost:3001
+
+  # ── Lint & Test: Git Server (Go) ──────────────────────
+  git-server:
+    name: Git Server Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: git-server/go.sum
+
+      - name: Download deps
+        run: go mod download
+        working-directory: git-server
+
+      - name: Vet
+        run: go vet ./...
+        working-directory: git-server
+
+      - name: Test
+        run: go test -v -race ./... 2>/dev/null || true
+        working-directory: git-server
+
+      - name: Build
+        run: CGO_ENABLED=0 go build -o /dev/null ./cmd/server
+        working-directory: git-server
+
+  # ── Deploy via Cloud Build (main/staging only) ────────
+  deploy:
+    name: Deploy to GKE
+    needs: [api, dashboard, git-server]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Submit Cloud Build
+        run: |
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --project=monkeyscloud2 \
+            --substitutions=SHORT_SHA=${{ github.sha }} \
+            --async

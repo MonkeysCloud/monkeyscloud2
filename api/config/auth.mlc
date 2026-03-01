@@ -1,0 +1,89 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Authentication Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Generate a secure secret: php -r "echo bin2hex(random_bytes(32));"
+
+auth {
+    # JWT Secret (REQUIRED - change in production!)
+    jwt_secret      = "changeme-use-at-least-32-characters-of-randomness"
+    
+    # Token TTLs (seconds)
+    access_ttl      = 1800      # 30 minutes
+    refresh_ttl     = 604800    # 7 days
+    
+    # Public paths (bypass authentication)
+    # Use "*" to disable auth entirely (dev mode)
+    public_paths = [
+        "*"
+    ]
+    
+    # ─── Optional Settings (uncomment to customize) ───────────────────────────
+    
+    # jwt_leeway    = 60        # Clock skew tolerance
+    # nbf_skew      = 5         # Start token validity in past
+    # issuer        = ""        # JWT issuer claim
+    # audience      = ""        # JWT audience claim
+    
+    # rate_limit {
+    #     enabled         = true
+    #     max_attempts    = 5
+    #     lockout_seconds = 900
+    #     driver          = "cache"   # redis, cache, memory
+    # }
+    
+    # token_storage {
+    #     driver          = "memory"  # redis, database, memory
+    #     prefix          = "auth:"
+    # }
+    
+    # two_factor {
+    #     enabled         = true
+    #     issuer          = "MyApp"
+    #     backup_codes    = 8
+    # }
+    
+    # password {
+    #     algorithm       = "default" # default, bcrypt, argon2id
+    #     cost            = 12
+    # }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OAuth2 (uncomment to enable social login)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# oauth {
+#     google {
+#         enabled         = true
+#         client_id       = ""
+#         client_secret   = ""
+#         redirect_uri    = "/oauth/google/callback"
+#     }
+#     
+#     github {
+#         enabled         = true
+#         client_id       = ""
+#         client_secret   = ""
+#         redirect_uri    = "/oauth/github/callback"
+#     }
+# }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RBAC Roles (uncomment to define custom roles)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# rbac {
+#     roles {
+#         admin {
+#             permissions = ["*"]
+#         }
+#         editor {
+#             permissions = ["posts.*", "media.*"]
+#             inherits    = ["viewer"]
+#         }
+#         viewer {
+#             permissions = ["posts.view", "media.view"]
+#         }
+#     }
+# }

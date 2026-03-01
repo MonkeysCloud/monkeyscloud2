@@ -1,0 +1,24 @@
+# =============================================================================
+# MonkeysCloud — Kustomize Staging Overlay
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monkeyscloud-staging
+
+resources:
+  - ../../base
+
+namePrefix: stg-
+
+patches:
+  # 2 replicas for staging
+  - target:
+      kind: Deployment
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+commonLabels:
+  environment: staging

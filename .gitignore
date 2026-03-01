@@ -1,0 +1,30 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker/nginx/certs/
+
+# Dependencies (installed inside containers)
+api/vendor/
+dashboard/node_modules/
+dashboard/.next/
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+
+# Build artifacts
+*.log
+tmp/
+
+# OS
+Thumbs.db

@@ -1,0 +1,204 @@
+syntax = "proto3";
+
+package monkeyscloud.git.v1;
+
+option go_package = "github.com/monkeyscloud/git-server/proto";
+
+// GitService is the gRPC API for the MonkeysCloud Git server.
+// Called by the MonkeysLegion Platform API for Git operations.
+service GitService {
+  // Repository lifecycle
+  rpc CreateRepository(CreateRepositoryRequest) returns (CreateRepositoryResponse);
+  rpc DeleteRepository(DeleteRepositoryRequest) returns (DeleteRepositoryResponse);
+
+  // Branch operations
+  rpc ListBranches(ListBranchesRequest) returns (ListBranchesResponse);
+  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
+  rpc DeleteBranch(DeleteBranchRequest) returns (DeleteBranchResponse);
+
+  // Commit operations
+  rpc ListCommits(ListCommitsRequest) returns (ListCommitsResponse);
+  rpc GetCommit(GetCommitRequest) returns (CommitDetail);
+
+  // Diff & Merge
+  rpc GetDiff(GetDiffRequest) returns (GetDiffResponse);
+  rpc MergeBranches(MergeRequest) returns (MergeResponse);
+
+  // File browsing
+  rpc GetFileTree(FileTreeRequest) returns (FileTreeResponse);
+  rpc GetFileContent(FileContentRequest) returns (FileContentResponse);
+}
+
+// =============================================================================
+// Repository
+// =============================================================================
+
+message CreateRepositoryRequest {
+  string org = 1;
+  string project = 2;
+}
+
+message CreateRepositoryResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteRepositoryRequest {
+  string org = 1;
+  string project = 2;
+}
+
+message DeleteRepositoryResponse {
+  bool success = 1;
+}
+
+// =============================================================================
+// Branches
+// =============================================================================
+
+message ListBranchesRequest {
+  string org = 1;
+  string project = 2;
+}
+
+message BranchInfo {
+  string name = 1;
+  string commit_sha = 2;
+  bool is_default = 3;
+  string updated_at = 4;
+}
+
+message ListBranchesResponse {
+  repeated BranchInfo branches = 1;
+}
+
+message CreateBranchRequest {
+  string org = 1;
+  string project = 2;
+  string name = 3;
+  string from_ref = 4;  // SHA or branch name
+}
+
+message CreateBranchResponse {
+  bool success = 1;
+  string commit_sha = 2;
+}
+
+message DeleteBranchRequest {
+  string org = 1;
+  string project = 2;
+  string name = 3;
+}
+
+message DeleteBranchResponse {
+  bool success = 1;
+}
+
+// =============================================================================
+// Commits
+// =============================================================================
+
+message ListCommitsRequest {
+  string org = 1;
+  string project = 2;
+  string branch = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message CommitInfo {
+  string sha = 1;
+  string message = 2;
+  string author_name = 3;
+  string author_email = 4;
+  string committed_at = 5;
+  int32 files_changed = 6;
+  int32 additions = 7;
+  int32 deletions = 8;
+}
+
+message ListCommitsResponse {
+  repeated CommitInfo commits = 1;
+}
+
+message GetCommitRequest {
+  string org = 1;
+  string project = 2;
+  string sha = 3;
+}
+
+message CommitDetail {
+  CommitInfo info = 1;
+  string diff = 2;
+}
+
+// =============================================================================
+// Diff & Merge
+// =============================================================================
+
+message GetDiffRequest {
+  string org = 1;
+  string project = 2;
+  string base = 3;
+  string head = 4;
+}
+
+message GetDiffResponse {
+  string diff = 1;
+  int32 files_changed = 2;
+  int32 additions = 3;
+  int32 deletions = 4;
+}
+
+message MergeRequest {
+  string org = 1;
+  string project = 2;
+  string source_branch = 3;
+  string target_branch = 4;
+  string strategy = 5;        // merge | squash | rebase
+  string author_name = 6;
+  string author_email = 7;
+}
+
+message MergeResponse {
+  bool success = 1;
+  string merge_sha = 2;
+  string message = 3;
+  repeated string conflicts = 4;
+}
+
+// =============================================================================
+// File Browsing
+// =============================================================================
+
+message FileTreeRequest {
+  string org = 1;
+  string project = 2;
+  string ref = 3;
+  string path = 4;
+}
+
+message FileEntry {
+  string name = 1;
+  string path = 2;
+  string type = 3;  // file | dir
+  int64 size = 4;
+  string mode = 5;
+}
+
+message FileTreeResponse {
+  repeated FileEntry entries = 1;
+}
+
+message FileContentRequest {
+  string org = 1;
+  string project = 2;
+  string ref = 3;
+  string path = 4;
+}
+
+message FileContentResponse {
+  bytes content = 1;
+  string path = 2;
+  int64 size = 3;
+}

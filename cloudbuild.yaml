@@ -1,0 +1,171 @@
+# =============================================================================
+# MonkeysCloud — Cloud Build CI/CD Pipeline
+# =============================================================================
+# Triggered on push to main/staging branches.
+# Builds all service images, pushes to Artifact Registry, and deploys to GKE.
+#
+# GitHub repo: MonkeysCloud/monkeyscloud2
+# GCP project: monkeyscloud2
+# =============================================================================
+
+substitutions:
+  _REGION: us-central1
+  _CLUSTER: mc-production
+  _REGISTRY: us-central1-docker.pkg.dev/monkeyscloud2/mc-platform
+  _ENV: production
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # ── Step 0: Detect environment from branch ──
+  - id: 'detect-env'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [[ "$BRANCH_NAME" == "main" ]]; then
+          echo "production" > /workspace/env.txt
+          echo "mc-production" > /workspace/cluster.txt
+        elif [[ "$BRANCH_NAME" == "staging" ]]; then
+          echo "staging" > /workspace/env.txt
+          echo "mc-staging" > /workspace/cluster.txt
+        else
+          echo "dev" > /workspace/env.txt
+          echo "mc-dev" > /workspace/cluster.txt
+        fi
+
+  # ── Step 1: Build API image ──
+  - id: 'build-api'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'docker/api/Dockerfile.prod'
+      - '-t'
+      - '${_REGISTRY}/api:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY}/api:latest'
+      - '--cache-from'
+      - '${_REGISTRY}/api:latest'
+      - '.'
+    waitFor: ['detect-env']
+
+  # ── Step 2: Build Dashboard image ──
+  - id: 'build-dashboard'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'docker/dashboard/Dockerfile.prod'
+      - '-t'
+      - '${_REGISTRY}/dashboard:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY}/dashboard:latest'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=https://api.monkeys.cloud'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_APP_URL=https://monkeys.cloud'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_GIT_URL=https://git.monkeys.cloud'
+      - '--cache-from'
+      - '${_REGISTRY}/dashboard:latest'
+      - '.'
+    waitFor: ['detect-env']
+
+  # ── Step 3: Build Git Server image ──
+  - id: 'build-git-server'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'docker/git-server/Dockerfile'
+      - '-t'
+      - '${_REGISTRY}/git-server:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY}/git-server:latest'
+      - '--cache-from'
+      - '${_REGISTRY}/git-server:latest'
+      - '.'
+    waitFor: ['detect-env']
+
+  # ── Step 4: Build CI/CD Worker image ──
+  - id: 'build-cicd'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'docker/cicd/Dockerfile'
+      - '-t'
+      - '${_REGISTRY}/cicd-worker:${SHORT_SHA}'
+      - '-t'
+      - '${_REGISTRY}/cicd-worker:latest'
+      - '--cache-from'
+      - '${_REGISTRY}/cicd-worker:latest'
+      - '.'
+    waitFor: ['detect-env']
+
+  # ── Step 5: Push all images ──
+  - id: 'push-images'
+    name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker push ${_REGISTRY}/api:${SHORT_SHA}
+        docker push ${_REGISTRY}/api:latest
+        docker push ${_REGISTRY}/dashboard:${SHORT_SHA}
+        docker push ${_REGISTRY}/dashboard:latest
+        docker push ${_REGISTRY}/git-server:${SHORT_SHA}
+        docker push ${_REGISTRY}/git-server:latest
+        docker push ${_REGISTRY}/cicd-worker:${SHORT_SHA}
+        docker push ${_REGISTRY}/cicd-worker:latest
+    waitFor: ['build-api', 'build-dashboard', 'build-git-server', 'build-cicd']
+
+  # ── Step 6: Deploy to GKE ──
+  - id: 'deploy-gke'
+    name: 'gcr.io/cloud-builders/gke-deploy'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        ENV=$(cat /workspace/env.txt)
+        CLUSTER=$(cat /workspace/cluster.txt)
+
+        # Get cluster credentials
+        gcloud container clusters get-credentials $CLUSTER \
+          --region ${_REGION} \
+          --project monkeyscloud2
+
+        # Apply Kustomize overlay
+        kubectl apply -k k8s/overlays/$ENV
+
+        # Update image tags
+        kubectl -n monkeyscloud-$ENV set image deployment/api \
+          api=${_REGISTRY}/api:${SHORT_SHA}
+        kubectl -n monkeyscloud-$ENV set image deployment/dashboard \
+          dashboard=${_REGISTRY}/dashboard:${SHORT_SHA}
+        kubectl -n monkeyscloud-$ENV set image deployment/git-server \
+          git-server=${_REGISTRY}/git-server:${SHORT_SHA}
+        kubectl -n monkeyscloud-$ENV set image deployment/cicd-worker \
+          cicd-worker=${_REGISTRY}/cicd-worker:${SHORT_SHA}
+
+        # Wait for rollout
+        kubectl -n monkeyscloud-$ENV rollout status deployment/api --timeout=300s
+        kubectl -n monkeyscloud-$ENV rollout status deployment/dashboard --timeout=300s
+        kubectl -n monkeyscloud-$ENV rollout status deployment/git-server --timeout=300s
+    waitFor: ['push-images']
+
+images:
+  - '${_REGISTRY}/api:${SHORT_SHA}'
+  - '${_REGISTRY}/api:latest'
+  - '${_REGISTRY}/dashboard:${SHORT_SHA}'
+  - '${_REGISTRY}/dashboard:latest'
+  - '${_REGISTRY}/git-server:${SHORT_SHA}'
+  - '${_REGISTRY}/git-server:latest'
+  - '${_REGISTRY}/cicd-worker:${SHORT_SHA}'
+  - '${_REGISTRY}/cicd-worker:latest'
+
+timeout: '1800s'

@@ -1,0 +1,105 @@
+# =============================================================================
+# MonkeysCloud Git Server — GKE Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-server
+  namespace: monkeyscloud-system
+  labels:
+    app: git-server
+    app.kubernetes.io/name: monkeyscloud-git
+    app.kubernetes.io/component: git
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: git-server
+  template:
+    metadata:
+      labels:
+        app: git-server
+    spec:
+      serviceAccountName: monkeyscloud-git
+      containers:
+        - name: git-server
+          image: REGION-docker.pkg.dev/PROJECT/mc-platform/git-server:latest
+          ports:
+            - containerPort: 3001
+              name: http
+              protocol: TCP
+            - containerPort: 50051
+              name: grpc
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: git-config
+            - secretRef:
+                name: git-secrets
+          env:
+            - name: GIT_HTTP_PORT
+              value: "3001"
+            - name: GIT_GRPC_PORT
+              value: "50051"
+            - name: GIT_REPOS_PATH
+              value: /var/lib/git
+            - name: PLATFORM_API_URL
+              value: "http://api:8000"
+          volumeMounts:
+            - name: git-repos
+              mountPath: /var/lib/git
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: git-repos
+          persistentVolumeClaim:
+            claimName: git-repos-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-server
+  namespace: monkeyscloud-system
+spec:
+  selector:
+    app: git-server
+  ports:
+    - port: 3001
+      targetPort: 3001
+      name: http
+      protocol: TCP
+    - port: 50051
+      targetPort: 50051
+      name: grpc
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git-repos-pvc
+  namespace: monkeyscloud-system
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: standard-rwx
+  resources:
+    requests:
+      storage: 100Gi

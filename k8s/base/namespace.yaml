@@ -1,0 +1,10 @@
+# =============================================================================
+# MonkeysCloud — Kubernetes Base Namespace
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monkeyscloud-system
+  labels:
+    app.kubernetes.io/name: monkeyscloud
+    app.kubernetes.io/part-of: monkeyscloud-platform
