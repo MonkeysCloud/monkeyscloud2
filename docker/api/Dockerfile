@@ -35,7 +35,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 RUN pecl install redis && docker-php-ext-enable redis
 
 # Install UUID extension
-RUN pecl install uuid && docker-php-ext-enable uuid
+RUN apk add --no-cache util-linux-dev \
+    && pecl install uuid && docker-php-ext-enable uuid
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
