@@ -201,6 +201,35 @@ services:
       retries: 3
       start_period: 10s
 
+  websocket:
+    build:
+      context: .
+      dockerfile: docker/websocket/Dockerfile
+    container_name: mc-websocket
+    restart: unless-stopped
+    ports:
+      - "${WS_PORT:-3002}:3002"
+    environment:
+      WS_PORT: 3002
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost}
+      API_INTERNAL_TOKEN: ${API_INTERNAL_TOKEN:-internal-dev-token}
+    volumes:
+      - ./websocket/src:/app/src    # Hot reload with --watch
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - mc-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   cicd-worker:
     build:
       context: .
