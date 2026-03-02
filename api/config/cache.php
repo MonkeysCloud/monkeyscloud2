@@ -21,8 +21,8 @@ return [
 
         // Redis cache configuration
         'redis' => [
-            'host' => $_ENV['CACHE_REDIS_HOST'] ?? '127.0.0.1',
-            'port' => $_ENV['CACHE_REDIS_PORT'] ?? 6379,
+            'host' => $_ENV['REDIS_HOST'] ?? $_ENV['CACHE_REDIS_HOST'] ?? '127.0.0.1',
+            'port' => $_ENV['REDIS_PORT'] ?? $_ENV['CACHE_REDIS_PORT'] ?? 6379,
             // 'auth' => $_ENV['CACHE_REDIS_AUTH'] ?? 'your_password', // optional
             // 'database' => $_ENV['CACHE_REDIS_DATABASE'] ?? 0,           // optional
             // 'timeout' => $_ENV['CACHE_REDIS_TIMEOUT'] ?? 2.0,          // optional
