@@ -18,6 +18,7 @@ docker/nginx/certs/
 api/vendor/
 dashboard/node_modules/
 dashboard/.next/
+websocket/node_modules/
 mobile/.dart_tool/
 mobile/.packages
 mobile/build/
