@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 /* ─── Data ─── */
 const features = [
@@ -79,10 +80,13 @@ export default function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-2xl">🐵</span>
-          <span className="text-xl font-bold text-dark font-heading tracking-tight group-hover:text-primary-500 transition-colors">
-            MonkeysCloud
-          </span>
+          <Image
+            src="/monkeyscloud.svg"
+            alt="MonkeysCloud"
+            width={172}
+            height={18}
+            priority
+          />
         </Link>
 
         {/* Desktop nav */}

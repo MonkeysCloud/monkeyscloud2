@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const footerLinks = {
   Product: [
@@ -86,8 +87,13 @@ export default function Footer() {
             {/* Logo + info */}
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
               <Link href="/" className="flex items-center gap-2">
-                <span className="text-xl">🐵</span>
-                <span className="text-sm font-bold font-heading">MonkeysCloud Corp</span>
+                <Image
+                  src="/monkeyscloud.svg"
+                  alt="MonkeysCloud"
+                  width={140}
+                  height={15}
+                  className="brightness-0 invert"
+                />
               </Link>
               <span className="text-xs text-surface-500">•</span>
               <span className="text-xs text-surface-500">Denver, CO</span>
