@@ -2,9 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
-  --foreground: #0f172a;
-  --background: #f8fafc;
+  --primary: #1A73E8;
+  --dark: #1B2A4A;
+  --accent: #FF6D00;
+  --light-bg: #F8FAFC;
+  --gray-text: #6B7280;
+  --foreground: #1B2A4A;
+  --background: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,11 +24,15 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family:
-    "Inter",
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: "Inter", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+}
+
+code, pre, .font-mono {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
 }
 
 /* Custom scrollbar */
@@ -41,4 +52,10 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+}
+
+/* Mega-menu backdrop */
+.mega-backdrop {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
