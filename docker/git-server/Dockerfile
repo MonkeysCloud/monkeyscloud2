@@ -9,14 +9,27 @@ FROM golang:1.23-alpine AS builder
 
 RUN apk add --no-cache git protobuf protobuf-dev
 
+# Install protoc Go plugins
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
+    && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
 WORKDIR /build
 
-# Copy go.mod/sum first for better layer caching
-COPY git-server/go.mod git-server/go.sum* ./
+# Copy go.mod first for better layer caching
+COPY git-server/go.mod ./
 RUN go mod download 2>/dev/null || true
 
 # Copy source
 COPY git-server/ .
+
+# Generate protobuf Go stubs
+RUN protoc \
+    --go_out=. --go_opt=paths=source_relative \
+    --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    proto/git.proto
+
+# Resolve all deps (generates go.sum)
+RUN go mod tidy
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /git-server ./cmd/server

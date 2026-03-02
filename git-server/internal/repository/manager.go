@@ -289,7 +289,11 @@ func (m *Manager) FileContent(org, project, ref, path string) ([]byte, error) {
 		return nil, fmt.Errorf("file %q not found: %w", path, err)
 	}
 
-	return file.Contents()
+	content, err := file.Contents()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(content), nil
 }
 
 // =============================================================================
