@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import Image from "next/image";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -7,13 +6,12 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="text-center mb-8 animate-fade-in">
-          <Image
+          <img
             src="/monkeyscloud.svg"
             alt="MonkeysCloud"
             width={220}
             height={23}
             className="mx-auto brightness-0 invert"
-            priority
           />
           <p className="mt-4 text-sm text-surface-400">
             Git • Tasks • Hosting • AutoDeploy
