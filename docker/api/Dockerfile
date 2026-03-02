@@ -60,6 +60,9 @@ COPY docker/api/php.ini /usr/local/etc/php/conf.d/99-monkeyscloud.ini
 RUN mkdir -p /app/var/cache /app/var/log /app/var/tmp \
     && chown -R www-data:www-data /app/var
 
+# Copy Caddyfile
+COPY docker/api/Caddyfile /etc/caddy/Caddyfile
+
 # Expose FrankenPHP port
 EXPOSE 8000
 
@@ -67,5 +70,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Start FrankenPHP in worker mode
-ENTRYPOINT ["frankenphp", "php-server", "--listen", ":8000"]
+# Start FrankenPHP with Caddyfile
+ENTRYPOINT ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

@@ -13,8 +13,8 @@ services:
       PHP_IDE_CONFIG: "serverName=monkeyscloud"    # Xdebug support
       XDEBUG_MODE: "off"                           # Set to 'debug' to enable
       XDEBUG_CONFIG: "client_host=host.docker.internal"
-    # Override entrypoint for dev: start in watch mode
-    entrypoint: ["frankenphp", "php-server", "--listen", ":8000", "--no-compress"]
+    # Override entrypoint for dev: use Caddyfile with file watching
+    entrypoint: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile", "--watch"]
 
   dashboard:
     environment:

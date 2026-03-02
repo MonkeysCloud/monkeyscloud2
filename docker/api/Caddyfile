@@ -1,0 +1,27 @@
+{
+	admin off
+	frankenphp
+}
+
+:8000 {
+	root * /app/public
+
+	# CORS headers for all API routes
+	@api path /api/* /auth/* /webhooks/*
+	header @api Access-Control-Allow-Origin *
+	header @api Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+	header @api Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+	header @api Access-Control-Max-Age 86400
+
+	# Handle preflight OPTIONS
+	@options method OPTIONS
+	handle @options {
+		respond 204
+	}
+
+	encode zstd br gzip
+
+	php_server {
+		resolve_root_symlink
+	}
+}
