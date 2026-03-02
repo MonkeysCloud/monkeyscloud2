@@ -22,13 +22,14 @@ jobs:
     name: API Tests
     runs-on: ubuntu-latest
     services:
-      mysql:
-        image: mysql:8.4
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: testing
-          MYSQL_DATABASE: monkeyscloud_test
-        ports: ['3306:3306']
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+          POSTGRES_USER: monkeyscloud
+          POSTGRES_PASSWORD: testing
+          POSTGRES_DB: monkeyscloud_test
+        ports: ['5432:5432']
+        options: --health-cmd="pg_isready -U monkeyscloud" --health-interval=10s --health-timeout=5s --health-retries=3
       redis:
         image: redis:7-alpine
         ports: ['6379:6379']
@@ -41,7 +42,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_mysql, redis, mbstring, zip, intl, opcache, pcntl, bcmath, sockets
+          extensions: pdo_pgsql, redis, mbstring, zip, intl, opcache, pcntl, bcmath, sockets
           coverage: pcov
 
       - name: Cache Composer
@@ -64,9 +65,9 @@ jobs:
         working-directory: api
         env:
           DB_HOST: 127.0.0.1
-          DB_PORT: 3306
+          DB_PORT: 5432
           DB_DATABASE: monkeyscloud_test
-          DB_USERNAME: root
+          DB_USERNAME: monkeyscloud
           DB_PASSWORD: testing
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379

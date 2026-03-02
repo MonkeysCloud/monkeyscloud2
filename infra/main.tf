@@ -250,12 +250,12 @@ resource "google_container_node_pool" "customers" {
 }
 
 # =============================================================================
-# CLOUD SQL (MySQL 8.4)
+# CLOUD SQL (PostgreSQL 16)
 # =============================================================================
 
 resource "google_sql_database_instance" "main" {
-  name             = "mc-${var.environment}-mysql"
-  database_version = "MYSQL_8_4"
+  name             = "mc-${var.environment}-postgres"
+  database_version = "POSTGRES_16"
   region           = var.region
 
   depends_on = [google_service_networking_connection.private]
@@ -275,7 +275,6 @@ resource "google_sql_database_instance" "main" {
 
     backup_configuration {
       enabled                        = true
-      binary_log_enabled             = true
       start_time                     = "03:00"
       point_in_time_recovery_enabled = var.environment == "production"
       transaction_log_retention_days = var.environment == "production" ? 7 : 3
@@ -291,12 +290,12 @@ resource "google_sql_database_instance" "main" {
     }
 
     database_flags {
-      name  = "slow_query_log"
-      value = "on"
+      name  = "log_min_duration_statement"
+      value = "1000"
     }
     database_flags {
-      name  = "long_query_time"
-      value = "1"
+      name  = "max_connections"
+      value = "200"
     }
 
     insights_config {

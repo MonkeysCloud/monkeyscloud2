@@ -6,11 +6,11 @@ FROM dunglas/frankenphp:1-php8.4-alpine AS base
 RUN apk add --no-cache \
     git unzip curl \
     icu-dev libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev \
-    oniguruma-dev linux-headers $PHPIZE_DEPS
+    oniguruma-dev postgresql-dev linux-headers $PHPIZE_DEPS
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
-    pdo_mysql mbstring zip gd intl opcache pcntl bcmath sockets
+    pdo_pgsql mbstring zip gd intl opcache pcntl bcmath sockets
 
 RUN pecl install redis && docker-php-ext-enable redis
 

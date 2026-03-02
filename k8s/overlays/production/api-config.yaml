@@ -14,7 +14,7 @@ data:
   APP_DEBUG: "false"
   APP_URL: "https://api.monkeys.cloud"
   DB_HOST: ""        # Injected by Terraform output (Cloud SQL private IP)
-  DB_PORT: "3306"
+  DB_PORT: "5432"
   DB_DATABASE: "monkeyscloud"
   REDIS_HOST: ""     # Injected by Terraform output (Memorystore IP)
   REDIS_PORT: "6379"

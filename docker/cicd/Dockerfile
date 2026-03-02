@@ -12,12 +12,13 @@ RUN apk add --no-cache \
     icu-dev \
     libzip-dev \
     oniguruma-dev \
+    postgresql-dev \
     linux-headers \
     $PHPIZE_DEPS
 
 # Install PHP extensions
 RUN docker-php-ext-install -j$(nproc) \
-    pdo_mysql \
+    pdo_pgsql \
     mbstring \
     zip \
     intl \

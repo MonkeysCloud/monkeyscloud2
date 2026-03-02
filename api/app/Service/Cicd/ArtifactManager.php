@@ -133,7 +133,7 @@ final class ArtifactManager
         $php = $config->runtime['php'] ?? '8.4';
         return <<<DOCKERFILE
 FROM dunglas/frankenphp:1-php{$php}-alpine
-RUN apk add --no-cache icu-dev libzip-dev && docker-php-ext-install pdo_mysql intl zip opcache
+RUN apk add --no-cache icu-dev libzip-dev postgresql-dev && docker-php-ext-install pdo_pgsql intl zip opcache
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . .

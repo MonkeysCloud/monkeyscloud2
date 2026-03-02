@@ -13,24 +13,23 @@ services:
   # INFRASTRUCTURE SERVICES
   # ---------------------------------------------------------------------------
 
-  mysql:
-    image: mysql:8.4
-    container_name: mc-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: mc-postgres
     restart: unless-stopped
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootsecret}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-monkeyscloud}
-      MYSQL_USER: ${MYSQL_USER:-monkeyscloud}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-monkeyscloud}
+      POSTGRES_USER: ${POSTGRES_USER:-monkeyscloud}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
     volumes:
-      - mysql-data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
     networks:
       - mc-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootsecret}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-monkeyscloud}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -112,11 +111,11 @@ services:
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
       APP_URL: ${APP_URL:-http://localhost}
-      DB_HOST: ${MYSQL_HOST:-mysql}
-      DB_PORT: 3306
-      DB_DATABASE: ${MYSQL_DATABASE:-monkeyscloud}
-      DB_USERNAME: ${MYSQL_USER:-monkeyscloud}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-secret}
+      DB_HOST: ${POSTGRES_HOST:-postgres}
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-monkeyscloud}
+      DB_USERNAME: ${POSTGRES_USER:-monkeyscloud}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: 6379
       MAIL_HOST: ${MAIL_HOST:-mailpit}
@@ -130,7 +129,7 @@ services:
       - api-vendor:/app/vendor        # Persist vendor for performance
       - api-var:/app/var              # Cache, logs, tmp
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -210,11 +209,11 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-local}
-      DB_HOST: ${MYSQL_HOST:-mysql}
-      DB_PORT: 3306
-      DB_DATABASE: ${MYSQL_DATABASE:-monkeyscloud}
-      DB_USERNAME: ${MYSQL_USER:-monkeyscloud}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-secret}
+      DB_HOST: ${POSTGRES_HOST:-postgres}
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-monkeyscloud}
+      DB_USERNAME: ${POSTGRES_USER:-monkeyscloud}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: 6379
       DOCKER_HOST: unix:///var/run/docker.sock
@@ -226,7 +225,7 @@ services:
       - cicd-builds:/var/lib/cicd     # Build workspace
       - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -266,9 +265,9 @@ services:
 # VOLUMES — All data persists locally across restarts
 # =============================================================================
 volumes:
-  mysql-data:
+  postgres-data:
     driver: local
-    name: mc-mysql-data
+    name: mc-postgres-data
   redis-data:
     driver: local
     name: mc-redis-data

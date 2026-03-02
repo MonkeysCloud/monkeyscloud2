@@ -33,17 +33,11 @@ services:
       APP_DEBUG: "true"
       CICD_WORKER_CONCURRENCY: "1"                 # Lower concurrency for dev
 
-  mysql:
-    # Expose on host for GUI tools (TablePlus, DBeaver, etc.)
+  postgres:
+    # Expose on host for GUI tools (TablePlus, DBeaver, pgAdmin, etc.)
     ports:
-      - "3306:3306"
-    command: >
-      --default-authentication-plugin=mysql_native_password
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --log-bin-trust-function-creators=1
-      --general-log=1
-      --general-log-file=/var/log/mysql/general.log
+      - "5432:5432"
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_min_duration_statement=0"]
 
   redis:
     # Expose on host for redis-cli or GUI tools
