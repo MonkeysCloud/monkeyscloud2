@@ -89,8 +89,8 @@ export default function Footer() {
                 <img
                   src="/monkeyscloud.svg"
                   alt="MonkeysCloud"
-                  width={140}
-                  height={15}
+                  width={180}
+                  height={20}
                   className="brightness-0 invert"
                 />
               </Link>

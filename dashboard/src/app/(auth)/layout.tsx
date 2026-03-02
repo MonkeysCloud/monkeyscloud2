@@ -9,8 +9,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <img
             src="/monkeyscloud.svg"
             alt="MonkeysCloud"
-            width={220}
-            height={23}
+            width={280}
+            height={30}
             className="mx-auto brightness-0 invert"
           />
           <p className="mt-4 text-sm text-surface-400">

@@ -83,8 +83,8 @@ export default function Navbar() {
           <Image
             src="/monkeyscloud.svg"
             alt="MonkeysCloud"
-            width={172}
-            height={18}
+            width={220}
+            height={24}
             priority
           />
         </Link>
