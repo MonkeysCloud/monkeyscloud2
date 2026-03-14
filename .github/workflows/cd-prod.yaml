@@ -19,6 +19,7 @@ env:
   PROJECT_ID: monkeyscloud2
   REGION: us-central1
   CLUSTER: mc-prod-cluster
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
