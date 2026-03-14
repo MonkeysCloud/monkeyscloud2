@@ -100,7 +100,7 @@ export default function BranchesPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
 
   // ---------- Fetch branches ----------

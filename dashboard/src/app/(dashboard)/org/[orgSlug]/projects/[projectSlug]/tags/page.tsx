@@ -106,7 +106,7 @@ export default function TagsPage() {
   // Delete
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
 
   const apiBase =

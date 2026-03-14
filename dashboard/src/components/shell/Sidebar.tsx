@@ -218,9 +218,18 @@ export function Sidebar() {
         if (Array.isArray(list)) {
           setProjects(list);
           const projectSlugFromUrl = pathname.match(/\/projects\/([^/]+)/)?.[1];
-          const match = projectSlugFromUrl ? list.find((p: any) => p.slug === projectSlugFromUrl) : null;
-          setActiveProject(match || list[0] || null);
-          if (projectSlugFromUrl) saveLastProject(projectSlugFromUrl);
+          if (projectSlugFromUrl) {
+            // URL has a project slug — only activate the matching project (no fallback)
+            const match = list.find((p: any) => p.slug === projectSlugFromUrl);
+            if (match) {
+              setActiveProject(match);
+              saveLastProject(projectSlugFromUrl);
+            }
+            // If slug not in list, leave activeProject null (don't flash wrong project)
+          } else {
+            // No project in URL — fall back to first project
+            setActiveProject(list[0] || null);
+          }
         }
       } catch {
         setProjects([]);

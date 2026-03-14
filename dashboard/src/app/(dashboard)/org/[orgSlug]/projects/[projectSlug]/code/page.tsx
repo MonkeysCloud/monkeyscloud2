@@ -178,7 +178,8 @@ export default function CodePage() {
   const [showCloneMenu, setShowCloneMenu] = useState(false);
   const [treeCommits, setTreeCommits] = useState<Record<string, TreeEntryCommit>>({});
 
-  const orgId = currentOrg?.id;
+  // Only use orgId when it matches the URL slug (prevents stale org ID in API calls)
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
   const cloneUrl = `http://localhost:3001/git/${params.orgSlug}/${projectSlug}.git`;
 

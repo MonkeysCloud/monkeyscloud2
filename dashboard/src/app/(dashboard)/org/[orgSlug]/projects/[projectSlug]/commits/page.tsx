@@ -131,7 +131,7 @@ export default function CommitsPage() {
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
 
   const apiBase =

@@ -44,7 +44,7 @@ const PRESET_COLORS = [
 export default function LabelsPage() {
   const params = useParams();
   const { currentOrg } = useAuthStore();
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
 
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);

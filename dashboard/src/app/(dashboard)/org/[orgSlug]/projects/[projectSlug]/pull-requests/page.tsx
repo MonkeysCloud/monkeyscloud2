@@ -98,7 +98,7 @@ export default function PullRequestsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
 
   // ---------- Fetch ----------

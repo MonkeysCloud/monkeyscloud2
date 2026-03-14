@@ -161,7 +161,7 @@ export default function NewEnvironmentsPage() {
   const [createProgress, setCreateProgress] = useState<{ done: number; total: number; current: string } | null>(null);
   const [createErrors, setCreateErrors] = useState<string[]>([]);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
   const orgSlug = params.orgSlug;
 

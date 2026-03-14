@@ -189,7 +189,7 @@ export default function SprintsPage() {
   const params = useParams();
   const { currentOrg } = useAuthStore();
   const projectSlug = params.projectSlug as string;
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
 
   const [projectId, setProjectId] = useState<number | null>(null);
   const [sprints, setSprints] = useState<Sprint[]>([]);

@@ -295,7 +295,7 @@ export default function BoardPage() {
   const { currentOrg } = useAuthStore();
   const projectSlug = params.projectSlug as string;
   const orgSlug = params.orgSlug as string;
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
 
   const [projectId, setProjectId] = useState<number | null>(null);
   const [board, setBoard] = useState<BoardData | null>(null);

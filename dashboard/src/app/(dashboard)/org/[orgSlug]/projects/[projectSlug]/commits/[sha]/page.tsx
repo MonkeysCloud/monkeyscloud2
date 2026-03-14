@@ -190,7 +190,7 @@ export default function CommitDetailPage() {
   const [copiedSha, setCopiedSha] = useState(false);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
   const sha = params.sha;
 

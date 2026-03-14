@@ -246,7 +246,7 @@ export default function NewPullRequestPage() {
   const [splitView, setSplitView] = useState(false);
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
 
   // Fetch branches

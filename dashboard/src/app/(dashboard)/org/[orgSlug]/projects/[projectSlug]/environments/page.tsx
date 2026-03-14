@@ -142,7 +142,7 @@ export default function EnvironmentsPage() {
 
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
   const orgSlug = params.orgSlug;
 

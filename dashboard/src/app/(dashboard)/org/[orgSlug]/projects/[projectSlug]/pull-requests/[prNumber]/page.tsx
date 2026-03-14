@@ -423,7 +423,7 @@ export default function PullRequestDetailPage() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [togglingDraft, setTogglingDraft] = useState(false);
 
-  const orgId = currentOrg?.id;
+  const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
   const prNumber = params.prNumber;
   const orgSlug = params.orgSlug;
