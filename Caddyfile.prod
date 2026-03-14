@@ -24,9 +24,9 @@ git.monkeys.cloud {
 }
 
 # Any wildcard or client apps
-*.monkeys.cloud {
-	tls {
-		on_demand
-	}
-	respond "MonkeysCloud Environment Not Found" 404
-}
+# *.monkeys.cloud {
+# 	tls {
+# 		on_demand
+# 	}
+# 	respond "MonkeysCloud Environment Not Found" 404
+# }
