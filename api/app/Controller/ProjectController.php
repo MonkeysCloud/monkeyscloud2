@@ -210,8 +210,7 @@ final class ProjectController extends AbstractController
             // --- Auto-create internal Git repository ---
             if (($project->repo_source ?? 'internal') === 'internal') {
                 try {
-                    $org = $this->orgRepo->find($orgId);
-                    $orgSlug = $org ? $org->slug : (string) $orgId;
+                    $orgSlug = $this->orgRepo->findSlugById($orgId) ?? (string) $orgId;
 
                     $gitServerUrl = rtrim($_ENV['GIT_SERVER_URL'] ?? getenv('GIT_SERVER_URL') ?: 'http://localhost:3001', '/');
 
@@ -222,6 +221,7 @@ final class ProjectController extends AbstractController
                         CURLOPT_POSTFIELDS => json_encode([
                             'org' => $orgSlug,
                             'project' => $slug,
+                            'stack' => $stack,
                             'docker_image' => $stackConfig->docker_image,
                             'scaffold_command' => $stackConfig->scaffold_command,
                             'gitignore' => $stackConfig->gitignore_template,

@@ -30,6 +30,7 @@ type CreateRepoRequest struct {
 }
 
 // Create initializes a new bare repository, optionally scaffolding via Docker.
+// Falls back to built-in seed files if Docker is unavailable (e.g. in GKE).
 func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateRepoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -39,11 +40,40 @@ func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	if req.DockerImage != "" && req.ScaffoldCommand != "" {
-		// New scaffold path: run Docker container
+		// Try Docker scaffold first
 		err = h.repoMgr.ScaffoldProject(req.Org, req.Project, req.DockerImage, req.ScaffoldCommand, req.Gitignore)
-	} else {
+		if err != nil {
+			log.Warn().Err(err).Msg("Docker scaffold failed, falling back to built-in seed")
+			// Fall back to built-in seed files (no Docker needed)
+			stack := req.Stack
+			if stack == "" {
+				// Infer stack from docker image name
+				stack = inferStack(req.DockerImage)
+			}
+			files := repository.StackFiles(req.Org, req.Project, stack)
+			if len(files) > 1 { // more than just README
+				repoPath := h.repoMgr.RepoPath(req.Org, req.Project)
+				err = h.repoMgr.SeedInitialCommit(repoPath, files)
+			}
+			// If no matching stack files, leave repo empty
+		}
+	} else if req.Stack != "" {
 		// Legacy path: use template branches
 		err = h.repoMgr.InitBareWithStack(req.Org, req.Project, req.Stack)
+		// If template not found, try seed files
+		if err == nil {
+			repoPath := h.repoMgr.RepoPath(req.Org, req.Project)
+			// Check if repo has any refs
+			hasRefs := h.repoMgr.HasRefs(req.Org, req.Project)
+			if !hasRefs {
+				files := repository.StackFiles(req.Org, req.Project, req.Stack)
+				if len(files) > 0 {
+					h.repoMgr.SeedInitialCommit(repoPath, files)
+				}
+			}
+		}
+	} else {
+		err = h.repoMgr.InitBare(req.Org, req.Project)
 	}
 
 	if err != nil {
@@ -58,6 +88,25 @@ func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 		"org":     req.Org,
 		"project": req.Project,
 	})
+}
+
+// inferStack tries to guess the stack name from a Docker image path.
+func inferStack(image string) string {
+	lower := strings.ToLower(image)
+	switch {
+	case strings.Contains(lower, "php"):
+		return "monkeyslegion"
+	case strings.Contains(lower, "node"):
+		return "nextjs"
+	case strings.Contains(lower, "python"):
+		return "python-generic"
+	case strings.Contains(lower, "go"):
+		return "go-generic"
+	case strings.Contains(lower, "ruby"):
+		return "ruby-generic"
+	default:
+		return ""
+	}
 }
 
 // Delete removes a repository.

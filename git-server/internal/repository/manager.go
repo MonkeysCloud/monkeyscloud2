@@ -80,7 +80,7 @@ func (m *Manager) InitTemplatesRepo() error {
 		if m.templateBranchExists(stack) {
 			continue
 		}
-		files := stackFiles("{{ORG}}", "{{PROJECT}}", stack)
+		files := StackFiles("{{ORG}}", "{{PROJECT}}", stack)
 		if err := m.seedTemplateBranch(stack, files); err != nil {
 			log.Warn().Err(err).Str("stack", stack).Msg("Failed to seed template branch")
 		} else {
@@ -471,6 +471,13 @@ func (m *Manager) InitBare(org, project string) error {
 	return nil
 }
 
+// HasRefs returns true if the repository has any refs (branches).
+func (m *Manager) HasRefs(org, project string) bool {
+	repoPath := m.RepoPath(org, project)
+	cmd := exec.Command("git", "-C", repoPath, "show-ref", "--heads")
+	return cmd.Run() == nil
+}
+
 // InitBareWithStack creates a new bare repository and seeds it from the
 // templates repo branch matching the stack name. (Legacy — use ScaffoldProject instead.)
 func (m *Manager) InitBareWithStack(org, project, stack string) error {
@@ -714,8 +721,8 @@ func (m *Manager) replacePlaceholders(dir, org, project string) error {
 	})
 }
 
-// seedInitialCommit clones the bare repo to a temp dir, writes files, commits, pushes.
-func (m *Manager) seedInitialCommit(bareRepoPath string, files map[string]string) error {
+// SeedInitialCommit clones the bare repo to a temp dir, writes files, commits, pushes.
+func (m *Manager) SeedInitialCommit(bareRepoPath string, files map[string]string) error {
 	tmpDir, err := os.MkdirTemp("", "mc-seed-*")
 	if err != nil {
 		return err
@@ -768,8 +775,8 @@ func (m *Manager) seedInitialCommit(bareRepoPath string, files map[string]string
 	return nil
 }
 
-// stackFiles returns the initial files for a given stack.
-func stackFiles(org, project, stack string) map[string]string {
+// StackFiles returns the initial files for a given stack.
+func StackFiles(org, project, stack string) map[string]string {
 	files := map[string]string{}
 
 	// README.md — always
