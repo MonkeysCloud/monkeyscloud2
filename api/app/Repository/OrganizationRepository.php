@@ -36,4 +36,25 @@ class OrganizationRepository extends EntityRepository
     {
         return $this->findBy(['owner_id' => $ownerId]);
     }
+
+    /**
+     * Fetch all organizations for a user with their role, in a single JOIN query.
+     * Avoids N+1 ORM queries that hit information_schema.
+     *
+     * @return array<int, array{id: int, name: string, slug: string, owner_id: int, avatar_url: ?string, created_at: string, role: string}>
+     */
+    public function findWithRoleByUser(int $userId): array
+    {
+        $pdo = $this->qb->pdo();
+        $stmt = $pdo->prepare('
+            SELECT o.id, o.name, o.slug, o.owner_id, o.avatar_url, o.created_at,
+                   m.role
+              FROM organizations o
+              JOIN organization_members m ON m.organization_id = o.id
+             WHERE m.user_id = :uid
+             ORDER BY o.name
+        ');
+        $stmt->execute(['uid' => $userId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 }

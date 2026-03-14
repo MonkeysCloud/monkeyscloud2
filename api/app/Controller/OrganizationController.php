@@ -32,21 +32,18 @@ final class OrganizationController extends AbstractController
         }
 
         try {
-            $memberships = $this->memberRepo->findByUser((int) $userId);
+            $rows = $this->orgRepo->findWithRoleByUser((int) $userId);
             $orgs = [];
-            foreach ($memberships as $m) {
-                $org = $this->orgRepo->find($m->organization_id);
-                if ($org) {
-                    $orgs[] = [
-                        'id' => $org->id,
-                        'name' => $org->name,
-                        'slug' => $org->slug,
-                        'owner_id' => $org->owner_id,
-                        'avatar_url' => $org->avatar_url ?? null,
-                        'created_at' => $org->created_at instanceof \DateTimeInterface ? $org->created_at->format('c') : $org->created_at,
-                        'role' => $m->role ?? 'member',
-                    ];
-                }
+            foreach ($rows as $row) {
+                $orgs[] = [
+                    'id'         => (int) $row['id'],
+                    'name'       => $row['name'],
+                    'slug'       => $row['slug'],
+                    'owner_id'   => (int) $row['owner_id'],
+                    'avatar_url' => $row['avatar_url'] ?? null,
+                    'created_at' => $row['created_at'],
+                    'role'       => $row['role'] ?? 'member',
+                ];
             }
             return $this->json(['data' => $orgs]);
         } catch (\Throwable $e) {

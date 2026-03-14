@@ -229,19 +229,16 @@ final class AuthController
             return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        // Fetch user's organizations
-        $memberships = $this->memberRepo->findByUser($user->id);
+        // Fetch user's organizations with a single JOIN query
+        $rows = $this->orgRepo->findWithRoleByUser($user->id);
         $orgs = [];
-        foreach ($memberships as $m) {
-            $org = $this->orgRepo->find($m->organization_id);
-            if ($org) {
-                $orgs[] = [
-                    'id' => $org->id,
-                    'name' => $org->name,
-                    'slug' => $org->slug,
-                    'role' => $m->role,
-                ];
-            }
+        foreach ($rows as $row) {
+            $orgs[] = [
+                'id'   => (int) $row['id'],
+                'name' => $row['name'],
+                'slug' => $row['slug'],
+                'role' => $row['role'] ?? 'member',
+            ];
         }
 
         return $this->json([
