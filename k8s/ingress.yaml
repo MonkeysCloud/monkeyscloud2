@@ -1,0 +1,63 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monkeyscloud-ingress
+  namespace: monkeyscloud
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "mc-prod-ip"
+    networking.gke.io/managed-certificates: "mc-prod-cert"
+spec:
+  rules:
+    - host: monkeys.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 80
+    - host: api.monkeys.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 80
+    - host: ws.monkeys.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: socket-server
+                port:
+                  number: 80
+    - host: git.monkeys.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: git-server
+                port:
+                  number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: mc-prod-cert
+  namespace: monkeyscloud
+spec:
+  domains:
+    - monkeys.cloud
+    - api.monkeys.cloud
+    - ws.monkeys.cloud
+    - git.monkeys.cloud

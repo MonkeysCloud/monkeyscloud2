@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: monkeyscloud
+  labels:
+    app: dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: monkeyscloud
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - port: 80
+      targetPort: 3000
+  type: ClusterIP

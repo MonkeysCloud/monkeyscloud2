@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-server
+  namespace: monkeyscloud
+  labels:
+    app: git-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-server
+  template:
+    metadata:
+      labels:
+        app: git-server
+    spec:
+      containers:
+        - name: git-server
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 3001
+              name: http
+            - containerPort: 2222
+              name: ssh
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: APP_ENV
+              value: production
+            - name: GIT_HTTP_PORT
+              value: "3001"
+            - name: GIT_GRPC_PORT
+              value: "50051"
+            - name: GIT_REPOS_PATH
+              value: /var/lib/git
+            - name: PLATFORM_API_URL
+              value: http://api:80
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: git-repos
+              mountPath: /var/lib/git
+      volumes:
+        - name: git-repos
+          persistentVolumeClaim:
+            claimName: git-repos-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git-repos-pvc
+  namespace: monkeyscloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: premium-rwo
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-server
+  namespace: monkeyscloud
+spec:
+  selector:
+    app: git-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3001
+    - name: ssh
+      port: 2222
+      targetPort: 2222
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+  type: ClusterIP

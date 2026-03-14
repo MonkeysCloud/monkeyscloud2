@@ -1,0 +1,102 @@
+name: CD Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to deploy (leave empty for all)"
+        required: false
+        type: choice
+        options:
+          - api
+          - dashboard
+          - socket-server
+          - git-server
+
+env:
+  PROJECT_ID: monkeyscloud2
+  REGION: us-central1
+  CLUSTER: mc-prod-cluster
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        service: [api, dashboard, socket-server, git-server]
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Determine build context
+        id: ctx
+        run: |
+          case "${{ matrix.service }}" in
+            api)
+              echo "dockerfile=docker/api/Dockerfile" >> $GITHUB_OUTPUT
+              echo "context=." >> $GITHUB_OUTPUT
+              ;;
+            dashboard)
+              echo "dockerfile=docker/dashboard/Dockerfile" >> $GITHUB_OUTPUT
+              echo "context=." >> $GITHUB_OUTPUT
+              ;;
+            socket-server)
+              echo "dockerfile=docker/websocket/Dockerfile" >> $GITHUB_OUTPUT
+              echo "context=." >> $GITHUB_OUTPUT
+              ;;
+            git-server)
+              echo "dockerfile=docker/git-server/Dockerfile" >> $GITHUB_OUTPUT
+              echo "context=." >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Build and Push
+        run: |
+          TAG="${{ github.sha }}"
+          REGISTRY="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/mc-prod-services"
+
+          docker build \
+            -t "$REGISTRY/${{ matrix.service }}:$TAG" \
+            -t "$REGISTRY/${{ matrix.service }}:latest" \
+            -f ${{ steps.ctx.outputs.dockerfile }} \
+            ${{ steps.ctx.outputs.context }}
+
+          docker push "$REGISTRY/${{ matrix.service }}:$TAG"
+          docker push "$REGISTRY/${{ matrix.service }}:latest"
+
+      - name: Install GKE auth plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
+
+      - name: Deploy to GKE
+        run: |
+          gcloud container clusters get-credentials "${{ env.CLUSTER }}" --region ${{ env.REGION }}
+
+          # Create namespace if not exists
+          kubectl apply -f k8s/namespaces.yaml
+
+          # Determine image
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/mc-prod-services/${{ matrix.service }}:${{ github.sha }}"
+
+          # Apply manifest with updated image
+          sed "s|IMAGE_PLACEHOLDER|${IMAGE}|g" k8s/services/${{ matrix.service }}.yaml > /tmp/manifest.yaml
+          kubectl apply -f /tmp/manifest.yaml 2>/dev/null \
+            || kubectl replace --force -f /tmp/manifest.yaml
+
+          # Wait for rollout
+          kubectl rollout status "deployment/${{ matrix.service }}" -n monkeyscloud --timeout=600s

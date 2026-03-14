@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: socket-server
+  namespace: monkeyscloud
+  labels:
+    app: socket-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: socket-server
+  template:
+    metadata:
+      labels:
+        app: socket-server
+    spec:
+      containers:
+        - name: socket-server
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 3002
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: WS_PORT
+              value: "3002"
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: secret
+            - name: CORS_ORIGIN
+              value: "https://monkeys.cloud,https://www.monkeys.cloud"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: socket-server
+  namespace: monkeyscloud
+spec:
+  selector:
+    app: socket-server
+  ports:
+    - port: 80
+      targetPort: 3002
+  type: ClusterIP
