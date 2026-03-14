@@ -63,8 +63,8 @@ RUN cp .env.example .env || touch .env
 # Custom PHP configuration
 COPY docker/api/php.ini /usr/local/etc/php/conf.d/99-monkeyscloud.ini
 
-# Create required directories
-RUN mkdir -p /app/var/cache /app/var/log /app/var/tmp \
+# Create required directories (routes + psr16 subdirs to avoid mkdir race in FrankenPHP workers)
+RUN mkdir -p /app/var/cache/routes /app/var/cache/psr16 /app/var/log /app/var/tmp \
     && chown -R www-data:www-data /app/var
 
 # Copy Caddyfile
