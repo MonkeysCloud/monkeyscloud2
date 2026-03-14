@@ -6,7 +6,7 @@ metadata:
   labels:
     app: dashboard
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: dashboard
@@ -23,6 +23,8 @@ spec:
           env:
             - name: NODE_ENV
               value: production
+            - name: NEXT_PUBLIC_API_URL
+              value: https://api.monkeys.cloud
           resources:
             requests:
               cpu: 200m
@@ -30,24 +32,42 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          readinessProbe:
-            httpGet:
-              path: /
+          startupProbe:
+            tcpSocket:
               port: 3000
-            initialDelaySeconds: 5
+            failureThreshold: 12
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 3000
             periodSeconds: 10
           livenessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: 3000
-            initialDelaySeconds: 15
-            periodSeconds: 20
+            periodSeconds: 30
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: dashboard-backend-config
+  namespace: monkeyscloud
+spec:
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    port: 3000
+    requestPath: /
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: dashboard
   namespace: monkeyscloud
+  annotations:
+    cloud.google.com/backend-config: '{"default": "dashboard-backend-config"}'
 spec:
   selector:
     app: dashboard
