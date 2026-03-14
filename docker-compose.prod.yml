@@ -43,13 +43,13 @@ services:
       - GIT_SERVER_URL=http://git-server:8080
       - GIT_SERVER_PUBLIC_URL=https://git.monkeys.cloud
       - REDIS_URL=redis://redis:6379
-      - MYSQL_URL=mysql://monkeyscloud:monkeyscloud@mysql:3306/monkeyscloud
+      - POSTGRES_URL=postgres://monkeyscloud:monkeyscloud@postgres:5432/monkeyscloud
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - SOCKET_SERVER_URL=http://socket-server:3000
     networks:
       - monkeyscloud-network
     depends_on:
-      - mysql
+      - postgres
       - redis
       - rabbitmq
 
@@ -83,17 +83,16 @@ services:
     networks:
       - monkeyscloud-network
 
-  mysql:
-    image: mysql:8.0
-    container_name: monkeyscloud-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: monkeyscloud-postgres
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: monkeyscloud
-      MYSQL_USER: monkeyscloud
-      MYSQL_PASSWORD: monkeyscloud
-      MYSQL_ROOT_PASSWORD: root
+      POSTGRES_DB: monkeyscloud
+      POSTGRES_USER: monkeyscloud
+      POSTGRES_PASSWORD: monkeyscloud
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - monkeyscloud-network
 
@@ -122,6 +121,6 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
-  mysql_data:
+  postgres_data:
   redis_data:
   rabbitmq_data:
