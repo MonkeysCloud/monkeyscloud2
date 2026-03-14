@@ -55,7 +55,7 @@ services:
 
   socket-server:
     build:
-      context: ./socket-server
+      context: ./websocket
       dockerfile: Dockerfile
     container_name: monkeyscloud-socket
     restart: unless-stopped
