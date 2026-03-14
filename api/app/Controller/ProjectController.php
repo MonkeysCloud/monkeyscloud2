@@ -38,16 +38,27 @@ final class ProjectController extends AbstractController
         }
 
         try {
-            $projects = $this->projectRepo->findByOrganization($orgId);
-            $data = array_map(fn($p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'slug' => $p->slug,
-                'stack' => $p->stack,
-                'status' => $p->status ?? 'active',
-                'repo_source' => $p->repo_source ?? 'internal',
-                'created_at' => $p->created_at instanceof \DateTimeInterface ? $p->created_at->format('c') : $p->created_at,
-            ], $projects);
+            // Raw SQL to avoid ORM overhead (information_schema queries)
+            $pdo = $this->projectRepo->qb->pdo();
+            $stmt = $pdo->prepare('
+                SELECT id, name, slug, stack, status, repo_source, created_at
+                  FROM projects
+                 WHERE organization_id = :oid
+                 ORDER BY name
+            ');
+            $stmt->execute(['oid' => $orgId]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            $data = array_map(fn($r) => [
+                'id'          => (int) $r['id'],
+                'name'        => $r['name'],
+                'slug'        => $r['slug'],
+                'stack'       => $r['stack'],
+                'status'      => $r['status'] ?? 'active',
+                'repo_source' => $r['repo_source'] ?? 'internal',
+                'created_at'  => $r['created_at'],
+            ], $rows);
+
             return $this->json(['data' => $data]);
         } catch (\Throwable $e) {
             error_log('PROJECT_INDEX ERROR: ' . $e->getMessage());
