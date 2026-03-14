@@ -10,7 +10,7 @@ use App\Repository\PlanRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UsageRecordRepository;
 use App\Repository\ApiKeyRepository;
-use App\Repository\OrganizationRepository;
+use App\Repository\SshKeyRepository;
 use App\Repository\WebhookRepository;
 use App\Repository\DomainRepository;
 use App\Repository\NotificationRepository;
@@ -25,7 +25,7 @@ final class PlatformController
         private SubscriptionRepository $subRepo,
         private UsageRecordRepository $usageRepo,
         private ApiKeyRepository $apiKeyRepo,
-        private OrganizationRepository $orgRepo,
+        private SshKeyRepository $sshKeyRepo,
         private WebhookRepository $webhookRepo,
         private DomainRepository $domainRepo,
         private NotificationRepository $notifRepo,
@@ -72,13 +72,7 @@ final class PlatformController
         return $this->json($this->usageRepo->findByOrganization($orgId));
     }
 
-    // --- API Keys ---
-
-    #[Route(methods: 'GET', path: '/api/v1/organizations/{orgId}/api-keys', name: 'apikeys.index', summary: 'List API keys for org', tags: ['Settings'])]
-    public function apiKeys(ServerRequestInterface $request, int $orgId): Response
-    {
-        return $this->json($this->apiKeyRepo->findActive($orgId));
-    }
+    // --- API Keys (user-scoped, works for all orgs) ---
 
     #[Route(methods: 'GET', path: '/api/v1/me/api-keys', name: 'apikeys.mine', summary: 'List my API keys', tags: ['Settings'])]
     public function myApiKeys(ServerRequestInterface $request): Response
@@ -95,22 +89,20 @@ final class PlatformController
 
         $name = trim($body['name'] ?? '');
         $scopes = $body['scopes'] ?? ['read', 'write'];
-        $orgId = (int) ($body['organization_id'] ?? 0);
 
-        if ($name === '' || $orgId === 0) {
-            return $this->json(['error' => 'name and organization_id are required'], 422);
+        if ($name === '') {
+            return $this->json(['error' => 'name is required'], 422);
         }
 
-        // Generate a random token: mc_ + 40 hex chars
+        // Generate token: mc_ + 40 hex chars (43 chars total)
         $rawToken = 'mc_' . bin2hex(random_bytes(20));
-        $prefix = substr($rawToken, 0, 11); // mc_ + first 8 hex
+        $keyId = substr(bin2hex(random_bytes(16)), 0, 32);
 
         $key = new \App\Entity\ApiKey();
         $key->user_id = $userId;
-        $key->organization_id = $orgId;
         $key->name = $name;
+        $key->key_id = $keyId;
         $key->key_hash = password_hash($rawToken, PASSWORD_BCRYPT);
-        $key->key_prefix = $prefix;
         $key->scopes = $scopes;
         $key->created_at = new \DateTimeImmutable();
 
@@ -119,22 +111,21 @@ final class PlatformController
         return $this->json([
             'id' => $key->id,
             'name' => $key->name,
-            'key_prefix' => $key->key_prefix,
+            'key_id' => $key->key_id,
             'scopes' => $key->scopes,
             'token' => $rawToken, // Only returned once!
             'created_at' => $key->created_at->format('c'),
         ], 201);
     }
 
-    #[Route(methods: 'DELETE', path: '/api/v1/api-keys/{keyId}', name: 'apikeys.revoke', summary: 'Revoke API key', tags: ['Settings'])]
-    public function revokeApiKey(ServerRequestInterface $request, int $keyId): Response
+    #[Route(methods: 'DELETE', path: '/api/v1/api-keys/{keyId}', name: 'apikeys.delete', summary: 'Delete API key', tags: ['Settings'])]
+    public function deleteApiKey(ServerRequestInterface $request, int $keyId): Response
     {
         $key = $this->apiKeyRepo->find($keyId);
         if (!$key) {
             return $this->json(['error' => 'Key not found'], 404);
         }
-        $key->revoked_at = new \DateTimeImmutable();
-        $this->apiKeyRepo->save($key);
+        $this->apiKeyRepo->delete($key);
         return $this->json(null, 204);
     }
 
@@ -143,53 +134,112 @@ final class PlatformController
     {
         $body = json_decode((string) $request->getBody(), true) ?: [];
         $token = $body['token'] ?? '';
-        $org = $body['org'] ?? '';
 
         if ($token === '') {
             return $this->json(['valid' => false, 'error' => 'Token required'], 401);
         }
 
-        // Extract prefix (mc_ + first 8 hex = 11 chars)
-        $prefix = substr($token, 0, 11);
-        $key = $this->apiKeyRepo->findByPrefix($prefix);
-
-        if (!$key) {
-            return $this->json(['valid' => false, 'error' => 'Invalid token'], 401);
-        }
-
-        // Check revoked
-        if ($key->revoked_at !== null) {
-            return $this->json(['valid' => false, 'error' => 'Token revoked'], 401);
-        }
-
-        // Check expired
-        if ($key->expires_at !== null && $key->expires_at < new \DateTimeImmutable()) {
-            return $this->json(['valid' => false, 'error' => 'Token expired'], 401);
-        }
-
-        // Verify hash
-        if (!password_verify($token, $key->key_hash)) {
-            return $this->json(['valid' => false, 'error' => 'Invalid token'], 401);
-        }
-
-        // Check org permission: verify the API key's org matches the requested repo org
-        if ($org !== '') {
-            $orgEntity = $this->orgRepo->findBySlug($org);
-            if (!$orgEntity || $orgEntity->id !== $key->organization_id) {
-                return $this->json(['valid' => false, 'error' => 'No permission for this organization'], 403);
+        // Find all keys and verify hash (we can't look up by prefix since key_id != token prefix)
+        // For better performance, we iterate active keys
+        $allKeys = $this->apiKeyRepo->findAll();
+        $matchedKey = null;
+        foreach ($allKeys as $k) {
+            if (password_verify($token, $k->key_hash)) {
+                $matchedKey = $k;
+                break;
             }
         }
 
+        if (!$matchedKey) {
+            return $this->json(['valid' => false, 'error' => 'Invalid token'], 401);
+        }
+
+        // Check expired
+        if ($matchedKey->expires_at !== null && $matchedKey->expires_at < new \DateTimeImmutable()) {
+            return $this->json(['valid' => false, 'error' => 'Token expired'], 401);
+        }
+
         // Update last_used_at
-        $key->last_used_at = new \DateTimeImmutable();
-        $this->apiKeyRepo->save($key);
+        $matchedKey->last_used_at = new \DateTimeImmutable();
+        $this->apiKeyRepo->save($matchedKey);
 
         return $this->json([
             'valid' => true,
-            'user_id' => $key->user_id,
-            'organization_id' => $key->organization_id,
-            'scopes' => $key->scopes,
+            'user_id' => $matchedKey->user_id,
+            'scopes' => $matchedKey->scopes,
         ]);
+    }
+
+    // --- SSH Keys ---
+
+    #[Route(methods: 'GET', path: '/api/v1/me/ssh-keys', name: 'sshkeys.mine', summary: 'List my SSH keys', tags: ['Settings'])]
+    public function mySshKeys(ServerRequestInterface $request): Response
+    {
+        $userId = (int) $request->getAttribute('user_id');
+        return $this->json($this->sshKeyRepo->findByUser($userId));
+    }
+
+    #[Route(methods: 'POST', path: '/api/v1/me/ssh-keys', name: 'sshkeys.store', summary: 'Upload SSH public key', tags: ['Settings'])]
+    public function uploadSshKey(ServerRequestInterface $request): Response
+    {
+        $userId = (int) $request->getAttribute('user_id');
+        $body = json_decode((string) $request->getBody(), true) ?: [];
+
+        $name = trim($body['name'] ?? '');
+        $publicKey = trim($body['public_key'] ?? '');
+
+        if ($name === '' || $publicKey === '') {
+            return $this->json(['error' => 'name and public_key are required'], 422);
+        }
+
+        // Validate SSH key format
+        if (!preg_match('/^ssh-(rsa|ed25519|ecdsa)\s+\S+/', $publicKey)) {
+            return $this->json(['error' => 'Invalid SSH public key format. Must start with ssh-rsa, ssh-ed25519, or ssh-ecdsa'], 422);
+        }
+
+        // Calculate fingerprint (SHA256 of the base64-decoded key data)
+        $parts = explode(' ', $publicKey);
+        if (count($parts) < 2) {
+            return $this->json(['error' => 'Invalid SSH key format'], 422);
+        }
+        $keyData = base64_decode($parts[1], true);
+        if ($keyData === false) {
+            return $this->json(['error' => 'Invalid SSH key data'], 422);
+        }
+        $fingerprint = 'SHA256:' . rtrim(base64_encode(hash('sha256', $keyData, true)), '=');
+
+        // Check if fingerprint already exists
+        $existing = $this->sshKeyRepo->findByFingerprint($fingerprint);
+        if ($existing) {
+            return $this->json(['error' => 'This SSH key is already registered'], 409);
+        }
+
+        $sshKey = new \App\Entity\SshKey();
+        $sshKey->user_id = $userId;
+        $sshKey->name = $name;
+        $sshKey->public_key = $publicKey;
+        $sshKey->fingerprint = $fingerprint;
+        $sshKey->created_at = new \DateTimeImmutable();
+
+        $this->sshKeyRepo->save($sshKey);
+
+        return $this->json([
+            'id' => $sshKey->id,
+            'name' => $sshKey->name,
+            'fingerprint' => $sshKey->fingerprint,
+            'created_at' => $sshKey->created_at->format('c'),
+        ], 201);
+    }
+
+    #[Route(methods: 'DELETE', path: '/api/v1/ssh-keys/{sshKeyId}', name: 'sshkeys.delete', summary: 'Delete SSH key', tags: ['Settings'])]
+    public function deleteSshKey(ServerRequestInterface $request, int $sshKeyId): Response
+    {
+        $sshKey = $this->sshKeyRepo->find($sshKeyId);
+        if (!$sshKey) {
+            return $this->json(['error' => 'SSH key not found'], 404);
+        }
+        $this->sshKeyRepo->delete($sshKey);
+        return $this->json(null, 204);
     }
 
     // --- Webhooks ---

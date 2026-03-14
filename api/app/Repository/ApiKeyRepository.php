@@ -11,23 +11,13 @@ class ApiKeyRepository extends EntityRepository
     protected string $table = 'api_keys';
     protected string $entityClass = ApiKey::class;
 
-    public function findByPrefix(string $prefix): ?ApiKey
+    public function findByKeyId(string $keyId): ?ApiKey
     {
-        return $this->findOneBy(['key_prefix' => $prefix]);
-    }
-
-    public function findByOrganization(int $orgId): array
-    {
-        return $this->findBy(['organization_id' => $orgId]);
-    }
-
-    public function findActive(int $orgId): array
-    {
-        return $this->findBy(['organization_id' => $orgId, 'revoked_at' => null]);
+        return $this->findOneBy(['key_id' => $keyId]);
     }
 
     public function findByUser(int $userId): array
     {
-        return $this->findBy(['user_id' => $userId, 'revoked_at' => null]);
+        return $this->findBy(['user_id' => $userId]);
     }
 }

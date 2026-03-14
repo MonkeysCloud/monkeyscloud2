@@ -7,8 +7,8 @@ use MonkeysLegion\Entity\Attributes\Entity;
 use MonkeysLegion\Entity\Attributes\Field;
 use MonkeysLegion\Entity\Attributes\ManyToOne;
 
-#[Entity(table: 'api_keys')]
-class ApiKey
+#[Entity(table: 'ssh_keys')]
+class SshKey
 {
     #[Field(type: 'integer', autoIncrement: true, primaryKey: true)]
     public int $id;
@@ -19,20 +19,14 @@ class ApiKey
     #[Field(type: 'string', length: 255)]
     public string $name;
 
-    #[Field(type: 'string', length: 32)]
-    public string $key_id;
+    #[Field(type: 'text')]
+    public string $public_key;
 
-    #[Field(type: 'string', length: 255)]
-    public string $key_hash;
-
-    #[Field(type: 'json')]
-    public array $scopes;
+    #[Field(type: 'string', length: 64)]
+    public string $fingerprint;
 
     #[Field(type: 'datetime', nullable: true)]
     public ?\DateTimeImmutable $last_used_at = null;
-
-    #[Field(type: 'datetime', nullable: true)]
-    public ?\DateTimeImmutable $expires_at = null;
 
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
