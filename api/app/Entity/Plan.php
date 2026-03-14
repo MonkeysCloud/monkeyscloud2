@@ -14,37 +14,16 @@ class Plan
     public int $id;
 
     #[Field(type: 'string', length: 50)]
-    public string $name; // free|starter|pro|enterprise
+    public string $name;
 
     #[Field(type: 'string', length: 50, unique: true)]
     public string $slug;
 
-    #[Field(type: 'decimal', precision: 8, scale: 2)]
-    public string $price_monthly;
+    #[Field(type: 'integer', default: 0)]
+    public int $price_monthly_cents = 0;
 
-    #[Field(type: 'decimal', precision: 8, scale: 2)]
-    public string $price_yearly;
-
-    #[Field(type: 'integer')]
-    public int $max_projects;
-
-    #[Field(type: 'integer')]
-    public int $max_members;
-
-    #[Field(type: 'integer', comment: 'Build minutes per month')]
-    public int $build_minutes;
-
-    #[Field(type: 'integer', comment: 'Storage in GB')]
-    public int $storage_gb;
-
-    #[Field(type: 'boolean', default: false)]
-    public bool $custom_domain = false;
-
-    #[Field(type: 'boolean', default: false)]
-    public bool $ai_features = false;
-
-    #[Field(type: 'json', nullable: true)]
-    public ?array $features = null;
+    #[Field(type: 'integer', default: 0)]
+    public int $price_yearly_cents = 0;
 
     #[Field(type: 'string', length: 100, nullable: true)]
     public ?string $stripe_price_id_monthly = null;
@@ -52,11 +31,22 @@ class Plan
     #[Field(type: 'string', length: 100, nullable: true)]
     public ?string $stripe_price_id_yearly = null;
 
+    #[Field(type: 'json')]
+    public array $limits = [];
+
+    #[Field(type: 'json')]
+    public array $features = [];
+
+    #[Field(type: 'boolean', default: true)]
+    public bool $is_active = true;
+
+    #[Field(type: 'integer', default: 0)]
+    public int $sort_order = 0;
+
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
-    #[Field(type: 'datetime')]
-    public \DateTimeImmutable $updated_at;
+    // --- Relationships ---
 
     #[OneToMany(targetEntity: Subscription::class, mappedBy: 'plan_id')]
     public array $subscriptions = [];

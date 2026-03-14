@@ -59,6 +59,7 @@ eventSubscriber.subscribe(
   "ws:build",
   "ws:deploy",
   "ws:task",
+  "ws:pr",
   (err) => {
     if (err) console.error("[Redis Subscribe]", err.message);
     else console.log("✓ Subscribed to ws:* channels");
@@ -111,6 +112,24 @@ eventSubscriber.on("message", (channel, data) => {
         }
         break;
 
+      case "ws:pr":
+        // PR events: push, merge, close, comment
+        console.log(`[DEBUG ws:pr] Raw event from Redis:`, JSON.stringify(event));
+        if (event.project) {
+          console.log(`[DEBUG ws:pr] Broadcasting to project:${event.project}`);
+          io.to(`project:${event.project}`).emit("pr:update", event);
+        }
+        if (event.org && event.project) {
+          const slugRoom = `pr-watch:${event.org}/${event.project}`;
+          console.log(`[DEBUG ws:pr] Broadcasting to ${slugRoom}`);
+          io.to(slugRoom).emit("pr:update", event);
+        }
+        if (event.prId) {
+          console.log(`[DEBUG ws:pr] Broadcasting to pr:${event.prId}`);
+          io.to(`pr:${event.prId}`).emit("pr:update", event);
+        }
+        break;
+
       default:
         break;
     }
@@ -134,10 +153,13 @@ io.use((socket, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    // Allow expired tokens for WebSocket — user is already authenticated via the API
+    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true });
     socket.data.user = decoded;
+    console.log(`[Auth] Token verified for user:`, decoded.sub || decoded.id || "unknown");
     next();
-  } catch {
+  } catch (err) {
+    console.error(`[Auth] JWT verify failed:`, err.name, err.message);
     next(new Error("Invalid token"));
   }
 });
@@ -170,6 +192,20 @@ io.on("connection", (socket) => {
   socket.on("leave:org", (orgId) => socket.leave(`org:${orgId}`));
   socket.on("leave:project", (projectId) => socket.leave(`project:${projectId}`));
   socket.on("leave:channel", (channelId) => socket.leave(`channel:${channelId}`));
+
+  // Pull Request rooms
+  socket.on("join:pr", (prId) => {
+    socket.join(`pr:${prId}`);
+    console.log(`  → ${user.id} joined pr:${prId}`);
+  });
+  socket.on("leave:pr", (prId) => socket.leave(`pr:${prId}`));
+
+  // PR watch rooms (slug-based: "org/project")
+  socket.on("join:pr-watch", (key) => {
+    socket.join(`pr-watch:${key}`);
+    console.log(`  → ${user.id} joined pr-watch:${key}`);
+  });
+  socket.on("leave:pr-watch", (key) => socket.leave(`pr-watch:${key}`));
 
   // ── Direct Message ──
   socket.on("message:send", (data) => {

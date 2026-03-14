@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
@@ -20,11 +21,15 @@ func NewRepoAPI(repoMgr *repository.Manager) *RepoAPI {
 }
 
 type CreateRepoRequest struct {
-	Org     string `json:"org"`
-	Project string `json:"project"`
+	Org             string `json:"org"`
+	Project         string `json:"project"`
+	Stack           string `json:"stack"`            // Legacy: template branch name
+	DockerImage     string `json:"docker_image"`     // Scaffold: Docker image to use
+	ScaffoldCommand string `json:"scaffold_command"` // Scaffold: command to run in container
+	Gitignore       string `json:"gitignore"`        // Scaffold: .gitignore content
 }
 
-// Create initializes a new bare repository.
+// Create initializes a new bare repository, optionally scaffolding via Docker.
 func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateRepoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -32,9 +37,18 @@ func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repoMgr.InitBare(req.Org, req.Project); err != nil {
+	var err error
+	if req.DockerImage != "" && req.ScaffoldCommand != "" {
+		// New scaffold path: run Docker container
+		err = h.repoMgr.ScaffoldProject(req.Org, req.Project, req.DockerImage, req.ScaffoldCommand, req.Gitignore)
+	} else {
+		// Legacy path: use template branches
+		err = h.repoMgr.InitBareWithStack(req.Org, req.Project, req.Stack)
+	}
+
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to create repo")
-		http.Error(w, "Failed to create repository", http.StatusInternalServerError)
+		http.Error(w, "Failed to create repository: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -134,6 +148,63 @@ func (h *CodeAPI) ListBranches(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(branches)
 }
 
+// ListBranchesDetailed returns branches with ahead/behind counts.
+func (h *CodeAPI) ListBranchesDetailed(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+
+	branches, err := h.repoMgr.ListBranchesDetailed(org, project)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(branches)
+}
+
+// CreateBranch creates a new branch from a source ref.
+func (h *CodeAPI) CreateBranch(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+
+	var req struct {
+		Name   string `json:"name"`
+		Source string `json:"source"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+	if req.Source == "" {
+		req.Source = "main"
+	}
+
+	if err := h.repoMgr.CreateBranch(org, project, req.Name, req.Source); err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "already exists") {
+			status = http.StatusConflict
+		} else if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "created",
+		"branch": req.Name,
+		"source": req.Source,
+	})
+}
+
 // ListCommits returns commits on a branch.
 func (h *CodeAPI) ListCommits(w http.ResponseWriter, r *http.Request) {
 	org := chi.URLParam(r, "org")
@@ -153,12 +224,35 @@ func (h *CodeAPI) ListCommits(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(commits)
 }
 
+// GetCommitDetail returns full commit info with diff.
+func (h *CodeAPI) GetCommitDetail(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+	sha := chi.URLParam(r, "sha")
+
+	detail, err := h.repoMgr.GetCommitDetail(org, project, sha)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(detail)
+}
+
 // FileTree returns directory listing at a ref.
 func (h *CodeAPI) FileTree(w http.ResponseWriter, r *http.Request) {
 	org := chi.URLParam(r, "org")
 	project := chi.URLParam(r, "project")
-	ref := chi.URLParam(r, "ref")
-	path := chi.URLParam(r, "*")
+	ref := r.URL.Query().Get("ref")
+	path := r.URL.Query().Get("path")
+	if ref == "" {
+		ref = "main"
+	}
 
 	entries, err := h.repoMgr.FileTree(org, project, ref, path)
 	if err != nil {
@@ -170,12 +264,35 @@ func (h *CodeAPI) FileTree(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(entries)
 }
 
+// TreeCommits returns the last commit for each entry in a directory.
+func (h *CodeAPI) TreeCommits(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+	ref := r.URL.Query().Get("ref")
+	path := r.URL.Query().Get("path")
+	if ref == "" {
+		ref = "main"
+	}
+
+	commits, err := h.repoMgr.TreeCommits(org, project, ref, path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(commits)
+}
+
 // FileContent returns file content at a ref.
 func (h *CodeAPI) FileContent(w http.ResponseWriter, r *http.Request) {
 	org := chi.URLParam(r, "org")
 	project := chi.URLParam(r, "project")
-	ref := chi.URLParam(r, "ref")
-	path := chi.URLParam(r, "*")
+	ref := r.URL.Query().Get("ref")
+	path := r.URL.Query().Get("path")
+	if ref == "" {
+		ref = "main"
+	}
 
 	content, err := h.repoMgr.FileContent(org, project, ref, path)
 	if err != nil {
@@ -185,4 +302,73 @@ func (h *CodeAPI) FileContent(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write(content)
+}
+
+// ListTags returns all tags for a repository.
+func (h *CodeAPI) ListTags(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+
+	tags, err := h.repoMgr.ListTags(org, project)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tags)
+}
+
+// CreateTag creates a new tag.
+func (h *CodeAPI) CreateTag(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+
+	var body struct {
+		Name    string `json:"name"`
+		Ref     string `json:"ref"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if body.Name == "" || body.Ref == "" {
+		http.Error(w, "name and ref are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repoMgr.CreateTag(org, project, body.Name, body.Ref, body.Message); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "created", "tag": body.Name})
+}
+
+// DeleteTag deletes a tag.
+func (h *CodeAPI) DeleteTag(w http.ResponseWriter, r *http.Request) {
+	org := chi.URLParam(r, "org")
+	project := chi.URLParam(r, "project")
+
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if body.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repoMgr.DeleteTag(org, project, body.Name); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "deleted", "tag": body.Name})
 }

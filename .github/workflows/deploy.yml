@@ -1,0 +1,46 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to GCP VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            # Clone or update the repository
+            if [ ! -d "/opt/monkeyscloud" ]; then
+              sudo mkdir -p /opt/monkeyscloud
+              sudo chown -R $USER:$USER /opt/monkeyscloud
+              git clone https://github.com/${{ github.repository }}.git /opt/monkeyscloud
+            fi
+
+            cd /opt/monkeyscloud
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Create environment network if it doesn't exist
+            docker network create monkeyscloud-network || true
+
+            # Pull latest images and restart containers
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Wait for API to be ready then run migrations
+            echo "Waiting for API to be ready..."
+            sleep 10
+            docker compose -f docker-compose.prod.yml exec -T api php bin/console -s schedule optimize
+            docker compose -f docker-compose.prod.yml exec -T api php vendor/bin/phinx migrate
+            
+            echo "Deployment successful!"

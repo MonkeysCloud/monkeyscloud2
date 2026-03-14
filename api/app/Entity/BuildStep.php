@@ -20,16 +20,16 @@ class BuildStep
     public string $name;
 
     #[Field(type: 'integer')]
-    public int $sort_order;
+    public int $step_order;
 
-    #[Field(type: 'enum', enumValues: ['pending', 'running', 'passed', 'failed', 'skipped'], default: 'pending')]
+    #[Field(type: 'enum', enumValues: ['pending', 'running', 'success', 'failed', 'skipped'], default: 'pending')]
     public string $status = 'pending';
 
-    #[Field(type: 'text', nullable: true)]
+    #[Field(type: 'string', length: 500, nullable: true)]
     public ?string $command = null;
 
-    #[Field(type: 'longText', nullable: true)]
-    public ?string $log = null;
+    #[Field(type: 'mediumText', nullable: true)]
+    public ?string $log_output = null;
 
     #[Field(type: 'integer', nullable: true)]
     public ?int $exit_code = null;
@@ -42,6 +42,8 @@ class BuildStep
 
     #[Field(type: 'datetime', nullable: true)]
     public ?\DateTimeImmutable $finished_at = null;
+
+    // --- Relationships ---
 
     #[ManyToOne(targetEntity: Build::class, inversedBy: 'steps')]
     public ?Build $build = null;

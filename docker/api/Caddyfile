@@ -6,16 +6,16 @@
 :8000 {
 	root * /app/public
 
-	# CORS headers for all API routes
-	@api path /api/* /auth/* /webhooks/*
-	header @api Access-Control-Allow-Origin *
-	header @api Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-	header @api Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-	header @api Access-Control-Max-Age 86400
+	# CORS is handled by the PHP CORS middleware.
+	# Do NOT add CORS headers here — duplicate ACAO headers break browsers.
 
-	# Handle preflight OPTIONS
+	# Handle preflight OPTIONS (return 204 before PHP to avoid session overhead)
 	@options method OPTIONS
 	handle @options {
+		header Access-Control-Allow-Origin *
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+		header Access-Control-Max-Age 86400
 		respond 204
 	}
 

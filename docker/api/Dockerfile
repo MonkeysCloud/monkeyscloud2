@@ -38,6 +38,14 @@ RUN pecl install redis && docker-php-ext-enable redis
 RUN apk add --no-cache util-linux-dev \
     && pecl install uuid && docker-php-ext-enable uuid
 
+# Install Terraform CLI for environment provisioning
+RUN TERRAFORM_VERSION="1.9.8" \
+    && ARCH=$(uname -m | sed 's/aarch64/arm64/' | sed 's/x86_64/amd64/') \
+    && wget -q "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip" -O /tmp/terraform.zip \
+    && unzip /tmp/terraform.zip -d /usr/local/bin/ \
+    && rm /tmp/terraform.zip \
+    && chmod +x /usr/local/bin/terraform
+
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

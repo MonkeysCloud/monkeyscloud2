@@ -14,8 +14,9 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token =
+  const raw =
     typeof window !== "undefined" ? localStorage.getItem("mc_token") : null;
+  const token = raw && raw !== "undefined" && raw !== "null" ? raw : null;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -42,6 +43,26 @@ export const api = {
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** Upload FormData (multipart) — does NOT set Content-Type so browser adds boundary */
+  upload: <T>(path: string, formData: FormData) => {
+    const raw =
+      typeof window !== "undefined" ? localStorage.getItem("mc_token") : null;
+    const token = raw && raw !== "undefined" && raw !== "null" ? raw : null;
+    return fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new ApiError(res.status, data, data?.error || res.statusText);
+      }
+      if (res.status === 204) return null as T;
+      return res.json() as Promise<T>;
+    });
+  },
 };
 
 // SWR fetcher

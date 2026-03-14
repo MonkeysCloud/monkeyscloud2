@@ -34,4 +34,10 @@ class TaskRepository extends EntityRepository
     {
         return $this->findOneBy(['key' => $key]);
     }
+
+    /** Expose PDO from the underlying query builder */
+    public function getPdo(): \PDO
+    {
+        return $this->qb->pdo();
+    }
 }

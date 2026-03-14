@@ -111,7 +111,7 @@ export default function HomePage() {
               <div className="grid grid-cols-3 divide-x divide-surface-200 min-h-[280px]">
                 {/* Code panel */}
                 <div className="p-4 bg-[#1e1e2e] text-xs font-mono space-y-1.5">
-                  <div className="text-surface-500 text-[10px] uppercase tracking-wider mb-2 font-sans">Code Editor</div>
+                  <div className="text-surface-500 text-xs uppercase tracking-wider mb-2 font-sans">Code Editor</div>
                   <div><span className="text-purple-400">class</span> <span className="text-yellow-300">UserController</span> <span className="text-surface-400">{"{"}</span></div>
                   <div className="pl-4"><span className="text-purple-400">public function</span> <span className="text-blue-300">store</span><span className="text-surface-400">(</span><span className="text-yellow-300">Request</span> <span className="text-orange-300">$req</span><span className="text-surface-400">)</span></div>
                   <div className="pl-4"><span className="text-surface-400">{"{"}</span></div>
@@ -121,13 +121,13 @@ export default function HomePage() {
                   <div className="pl-8"><span className="text-purple-400">return</span> <span className="text-blue-300">$user</span><span className="text-surface-400">;</span></div>
                   <div className="pl-4"><span className="text-surface-400">{"}"}</span></div>
                   <div><span className="text-surface-400">{"}"}</span></div>
-                  <div className="mt-3 px-2 py-1.5 rounded bg-green-500/10 border border-green-500/20 text-green-400 text-[10px]">
+                  <div className="mt-3 px-2 py-1.5 rounded bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
                     ✓ AI Review: LGTM — no issues found
                   </div>
                 </div>
                 {/* Task panel */}
                 <div className="p-4 bg-white space-y-2">
-                  <div className="text-surface-500 text-[10px] uppercase tracking-wider mb-2">Task Board</div>
+                  <div className="text-surface-500 text-xs uppercase tracking-wider mb-2">Task Board</div>
                   {[
                     { label: "Auth API endpoints", tag: "In Progress", color: "bg-blue-100 text-blue-700" },
                     { label: "User profile page", tag: "In Review", color: "bg-purple-100 text-purple-700" },
@@ -136,16 +136,16 @@ export default function HomePage() {
                   ].map((t) => (
                     <div key={t.label} className="flex items-center justify-between p-2.5 rounded-lg border border-surface-200 hover:border-primary-200 transition-colors">
                       <span className="text-xs text-dark font-medium">{t.label}</span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${t.color}`}>{t.tag}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${t.color}`}>{t.tag}</span>
                     </div>
                   ))}
-                  <div className="mt-2 text-[10px] text-surface-400 flex items-center gap-1">
+                  <div className="mt-2 text-xs text-surface-400 flex items-center gap-1">
                     <span className="text-primary-500">↗</span> 3 tasks linked to PR #42
                   </div>
                 </div>
                 {/* Deploy panel */}
                 <div className="p-4 bg-[#0f172a] text-xs font-mono space-y-1.5">
-                  <div className="text-surface-500 text-[10px] uppercase tracking-wider mb-2 font-sans">Deploy Terminal</div>
+                  <div className="text-surface-500 text-xs uppercase tracking-wider mb-2 font-sans">Deploy Terminal</div>
                   <div className="text-green-400">$ mc deploy production</div>
                   <div className="text-surface-400">→ Building image...</div>
                   <div className="text-surface-400">→ Running tests... <span className="text-green-400">✓ 48/48 passed</span></div>

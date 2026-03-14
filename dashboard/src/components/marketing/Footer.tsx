@@ -87,11 +87,10 @@ export default function Footer() {
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
               <Link href="/" className="flex items-center gap-2">
                 <img
-                  src="/monkeyscloud.svg"
+                  src="/monkeyscloud-white.svg"
                   alt="MonkeysCloud"
                   width={180}
                   height={20}
-                  className="brightness-0 invert"
                 />
               </Link>
               <span className="text-xs text-surface-500">•</span>

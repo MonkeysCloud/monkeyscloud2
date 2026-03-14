@@ -10,8 +10,10 @@ use App\Repository\PullRequestRepository;
 use App\Repository\PrReviewRepository;
 use App\Repository\PrCommentRepository;
 use App\Repository\CommitRepository;
+use MonkeysLegion\Router\Attributes\RoutePrefix;
 use Psr\Http\Message\ServerRequestInterface;
 
+#[RoutePrefix('/api/v1')]
 final class GitController
 {
     public function __construct(

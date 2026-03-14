@@ -9,19 +9,18 @@ auth {
     jwt_secret      = "changeme-use-at-least-32-characters-of-randomness"
     
     # Token TTLs (seconds)
-    access_ttl      = 1800      # 30 minutes
-    refresh_ttl     = 604800    # 7 days
+    access_ttl      = 172800    # 2 days
+    refresh_ttl     = 2592000   # 30 days
     
     # Public paths (bypass authentication)
-    # Use "*" to disable auth entirely (dev mode)
+    # Auth is handled per-route via #[Middleware(['auth'])] attribute
     public_paths = [
         "*"
     ]
     
-    # ─── Optional Settings (uncomment to customize) ───────────────────────────
+    # ─── Optional Settings ─────────────────────────────────────────────────────
     
     # jwt_leeway    = 60        # Clock skew tolerance
-    # nbf_skew      = 5         # Start token validity in past
     # issuer        = ""        # JWT issuer claim
     # audience      = ""        # JWT audience claim
     
@@ -29,17 +28,17 @@ auth {
     #     enabled         = true
     #     max_attempts    = 5
     #     lockout_seconds = 900
-    #     driver          = "cache"   # redis, cache, memory
+    #     driver          = "cache"
     # }
     
     # token_storage {
-    #     driver          = "memory"  # redis, database, memory
+    #     driver          = "redis"
     #     prefix          = "auth:"
     # }
     
     # two_factor {
     #     enabled         = true
-    #     issuer          = "MyApp"
+    #     issuer          = "MonkeysCloud"
     #     backup_codes    = 8
     # }
     

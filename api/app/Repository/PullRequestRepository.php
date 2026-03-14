@@ -11,23 +11,31 @@ class PullRequestRepository extends EntityRepository
     protected string $table = 'pull_requests';
     protected string $entityClass = PullRequest::class;
 
-    public function findByProject(int $projectId, ?string $status = null): array
+    public function findByRepository(int $repositoryId, ?string $status = null): array
     {
-        $criteria = ['project_id' => $projectId];
+        if ($status === 'open') {
+            // Include draft PRs alongside open ones
+            $open = $this->findBy(['repository_id' => $repositoryId, 'status' => 'open'], ['created_at' => 'DESC']);
+            $draft = $this->findBy(['repository_id' => $repositoryId, 'status' => 'draft'], ['created_at' => 'DESC']);
+            $all = array_merge($open, $draft);
+            usort($all, fn($a, $b) => $b->created_at <=> $a->created_at);
+            return $all;
+        }
+        $criteria = ['repository_id' => $repositoryId];
         if ($status) {
             $criteria['status'] = $status;
         }
-        return $this->findBy($criteria);
+        return $this->findBy($criteria, ['created_at' => 'DESC']);
     }
 
-    public function findByNumber(int $projectId, int $number): ?PullRequest
+    public function findByNumber(int $repositoryId, int $number): ?PullRequest
     {
-        return $this->findOneBy(['project_id' => $projectId, 'number' => $number]);
+        return $this->findOneBy(['repository_id' => $repositoryId, 'number' => $number]);
     }
 
-    public function nextNumber(int $projectId): int
+    public function nextNumber(int $repositoryId): int
     {
-        $result = $this->findBy(['project_id' => $projectId]);
+        $result = $this->findBy(['repository_id' => $repositoryId]);
         return count($result) + 1;
     }
 }

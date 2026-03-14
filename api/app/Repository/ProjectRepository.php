@@ -13,7 +13,7 @@ class ProjectRepository extends EntityRepository
 
     public function findByOrganization(int $orgId): array
     {
-        return $this->findBy(['organization_id' => $orgId, 'deleted_at' => null]);
+        return $this->findBy(['organization_id' => $orgId]);
     }
 
     public function findBySlug(int $orgId, string $slug): ?Project

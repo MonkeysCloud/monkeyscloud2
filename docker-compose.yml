@@ -8,7 +8,6 @@
 # =============================================================================
 
 services:
-
   # ---------------------------------------------------------------------------
   # INFRASTRUCTURE SERVICES
   # ---------------------------------------------------------------------------
@@ -120,14 +119,18 @@ services:
       REDIS_PORT: 6379
       MAIL_HOST: ${MAIL_HOST:-mailpit}
       MAIL_PORT: 1025
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:-changeme-use-at-least-32-characters-of-randomness}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monkeyscloud}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret}
+      GIT_SERVER_URL: ${GIT_SERVER_URL:-http://git-server:3001}
+      GIT_SERVER_PUBLIC_URL: ${GIT_SERVER_PUBLIC_URL:-https://git.monkeys.cloud}
+      GOOGLE_APPLICATION_CREDENTIALS: /var/gcp/service-account.json
     volumes:
-      - ./api:/app                    # Hot reload: mount source code
-      - api-vendor:/app/vendor        # Persist vendor for performance
-      - api-var:/app/var              # Cache, logs, tmp
+      - ./api:/app # Hot reload: mount source code
+      - api-vendor:/app/vendor # Persist vendor for performance
+      - ./infrastructure:/var/www/infrastructure:ro # Terraform modules
+      - ${GCP_KEY_PATH:-./gcp-key.json}:/var/gcp/service-account.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,9 +159,9 @@ services:
       NEXT_PUBLIC_GIT_URL: ${NEXT_PUBLIC_GIT_URL:-http://localhost:3001}
       NODE_ENV: development
     volumes:
-      - ./dashboard:/app              # Hot reload: mount source code
-      - dashboard-node-modules:/app/node_modules  # Persist node_modules
-      - dashboard-next:/app/.next     # Persist .next build cache
+      - ./dashboard:/app # Hot reload: mount source code
+      - dashboard-node-modules:/app/node_modules # Persist node_modules
+      - dashboard-next:/app/.next # Persist .next build cache
     depends_on:
       - api
     networks:
@@ -178,7 +181,7 @@ services:
     restart: unless-stopped
     ports:
       - "${GIT_PORT:-3001}:3001"
-      - "50051:50051"                 # gRPC port for platform API
+      - "50051:50051" # gRPC port for platform API
     environment:
       APP_ENV: ${APP_ENV:-local}
       GIT_HTTP_PORT: "3001"
@@ -188,14 +191,23 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: 6379
     volumes:
-      - git-repos:/var/lib/git        # Bare Git repositories
+      - git-repos:/var/lib/git # Bare Git repositories
+      - /var/run/docker.sock:/var/run/docker.sock # Docker-in-Docker for scaffold
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - mc-net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -213,18 +225,26 @@ services:
       WS_PORT: 3002
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:-changeme-use-at-least-32-characters-of-randomness}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost}
       API_INTERNAL_TOKEN: ${API_INTERNAL_TOKEN:-internal-dev-token}
     volumes:
-      - ./websocket/src:/app/src    # Hot reload with --watch
+      - ./websocket/src:/app/src # Hot reload with --watch
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - mc-net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3002/health",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -249,10 +269,10 @@ services:
       REGISTRY_URL: http://registry:5000
       GIT_REPOS_PATH: /var/lib/git
     volumes:
-      - ./api:/app                    # Shares codebase with API
-      - git-repos:/var/lib/git:ro     # Read bare repos (read-only)
-      - cicd-builds:/var/lib/cicd     # Build workspace
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
+      - ./api:/app # Shares codebase with API
+      - git-repos:/var/lib/git:ro # Read bare repos (read-only)
+      - cicd-builds:/var/lib/cicd # Build workspace
+      - /var/run/docker.sock:/var/run/docker.sock # Docker-in-Docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -276,7 +296,7 @@ services:
     ports:
       - "${NGINX_HTTP_PORT:-80}:80"
     volumes:
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro    # Hot reload nginx configs
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro # Hot reload nginx configs
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
@@ -285,7 +305,15 @@ services:
     networks:
       - mc-net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -312,9 +340,7 @@ volumes:
   api-vendor:
     driver: local
     name: mc-api-vendor
-  api-var:
-    driver: local
-    name: mc-api-var
+
   dashboard-node-modules:
     driver: local
     name: mc-dashboard-node-modules

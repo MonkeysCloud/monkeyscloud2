@@ -1,0 +1,32 @@
+# Global options
+{
+	email jorge@test.com
+}
+
+# Dashboard
+monkeys.cloud {
+	reverse_proxy dashboard:3000
+}
+
+# API
+api.monkeys.cloud {
+	reverse_proxy api:80
+}
+
+# WebSockets
+ws.monkeys.cloud {
+	reverse_proxy socket-server:3000
+}
+
+# Git Server HTTP interface (Not SSH, SSH is on port 2222 directly)
+git.monkeys.cloud {
+	reverse_proxy git-server:8080
+}
+
+# Any wildcard or client apps
+*.monkeys.cloud {
+	tls {
+		on_demand
+	}
+	respond "MonkeysCloud Environment Not Found" 404
+}

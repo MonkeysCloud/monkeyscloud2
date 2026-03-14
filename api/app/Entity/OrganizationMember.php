@@ -34,9 +34,14 @@ class OrganizationMember
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $updated_at;
 
+    // --- Relationships ---
+
     #[ManyToOne(targetEntity: Organization::class, inversedBy: 'members')]
     public ?Organization $organization = null;
 
     #[ManyToOne(targetEntity: User::class, inversedBy: 'memberships')]
     public ?User $user = null;
+
+    #[ManyToOne(targetEntity: User::class)]
+    public ?User $inviter = null;
 }

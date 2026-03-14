@@ -1,5 +1,7 @@
 cors {
-    allow_origin  ["*"]
-    allow_methods ["GET","POST","OPTIONS","DELETE","PATCH"]
-    allow_headers ["Content-Type","Authorization"]
+    allow_methods     ["GET","POST","PUT","OPTIONS","DELETE","PATCH"]
+    allow_headers     ["Content-Type","Authorization","X-Requested-With","X-CSRF-Token"]
+    expose_headers    ["X-Total-Count","X-Pagination-Total"]
+    allow_credentials true
+    max_age           86400
 }

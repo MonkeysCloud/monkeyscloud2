@@ -45,6 +45,11 @@ func main() {
 	// Repository manager (wraps go-git + exec for merges)
 	repoMgr := repository.NewManager(reposPath)
 
+	// Seed template branches (idempotent — only creates missing branches)
+	if err := repoMgr.InitTemplatesRepo(); err != nil {
+		log.Warn().Err(err).Msg("Failed to initialize templates repo")
+	}
+
 	// Hook executor (notifies platform API on push events)
 	hookExec := hooks.NewExecutor(platformAPIURL, redisAddr)
 
@@ -88,9 +93,22 @@ func main() {
 	repoHandler := handler.NewRepoAPI(repoMgr)
 	r.Route("/api/repos", func(r chi.Router) {
 		r.Use(handler.InternalAuthMiddleware)
-		r.Post("/", repoHandler.Create)             // Init bare repo
-		r.Delete("/{org}/{project}", repoHandler.Delete) // Delete repo
+		r.Post("/", repoHandler.Create)                   // Init bare repo
+		r.Delete("/{org}/{project}", repoHandler.Delete)  // Delete repo
 		r.Post("/{org}/{project}/fork", repoHandler.Fork) // Fork repo
+	})
+
+	// Template management REST API (admin)
+	tmplHandler := handler.NewTemplateAPI(repoMgr)
+	r.Route("/api/templates", func(r chi.Router) {
+		r.Use(handler.InternalAuthMiddleware)
+		r.Get("/", tmplHandler.List)                        // List all templates
+		r.Post("/", tmplHandler.Create)                     // Create new template
+		r.Get("/{stack}", tmplHandler.GetFiles)             // Get file tree
+		r.Delete("/{stack}", tmplHandler.Delete)            // Delete template
+		r.Get("/{stack}/files", tmplHandler.GetFileContent) // Get file content
+		r.Put("/{stack}/files", tmplHandler.UpdateFile)     // Update file
+		r.Delete("/{stack}/files", tmplHandler.DeleteFile)  // Delete file
 	})
 
 	// Diff / Merge / Branch REST API (called by platform API)
@@ -100,9 +118,16 @@ func main() {
 		r.Get("/{org}/{project}/diff/{base}...{head}", codeHandler.Diff)
 		r.Post("/{org}/{project}/merge", codeHandler.Merge)
 		r.Get("/{org}/{project}/branches", codeHandler.ListBranches)
+		r.Get("/{org}/{project}/branches/detailed", codeHandler.ListBranchesDetailed)
+		r.Post("/{org}/{project}/branches", codeHandler.CreateBranch)
 		r.Get("/{org}/{project}/commits", codeHandler.ListCommits)
-		r.Get("/{org}/{project}/tree/{ref}/*", codeHandler.FileTree)
-		r.Get("/{org}/{project}/blob/{ref}/*", codeHandler.FileContent)
+		r.Get("/{org}/{project}/commits/{sha}", codeHandler.GetCommitDetail)
+		r.Get("/{org}/{project}/tree", codeHandler.FileTree)
+		r.Get("/{org}/{project}/tree-commits", codeHandler.TreeCommits)
+		r.Get("/{org}/{project}/blob", codeHandler.FileContent)
+		r.Get("/{org}/{project}/tags", codeHandler.ListTags)
+		r.Post("/{org}/{project}/tags", codeHandler.CreateTag)
+		r.Delete("/{org}/{project}/tags", codeHandler.DeleteTag)
 	})
 
 	httpServer := &http.Server{

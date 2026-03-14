@@ -5,6 +5,9 @@ interface User {
   email: string;
   name: string;
   avatar_url?: string;
+  timezone?: string;
+  locale?: string;
+  is_admin?: boolean;
 }
 
 interface Organization {

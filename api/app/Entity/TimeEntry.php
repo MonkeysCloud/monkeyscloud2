@@ -19,19 +19,21 @@ class TimeEntry
     #[Field(type: 'integer')]
     public int $user_id;
 
-    #[Field(type: 'integer', comment: 'Duration in minutes')]
-    public int $minutes;
+    #[Field(type: 'integer')]
+    public int $duration_minutes;
 
-    #[Field(type: 'text', nullable: true)]
-    public ?string $note = null;
+    #[Field(type: 'string', length: 255, nullable: true)]
+    public ?string $description = null;
 
     #[Field(type: 'date')]
-    public \DateTimeImmutable $logged_date;
+    public \DateTimeImmutable $logged_at;
 
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
-    #[ManyToOne(targetEntity: Task::class, inversedBy: 'time_entries')]
+    // --- Relationships ---
+
+    #[ManyToOne(targetEntity: Task::class, inversedBy: 'timeEntries')]
     public ?Task $task = null;
 
     #[ManyToOne(targetEntity: User::class)]

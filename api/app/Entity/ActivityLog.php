@@ -19,19 +19,22 @@ class ActivityLog
     #[Field(type: 'integer', nullable: true)]
     public ?int $user_id = null;
 
-    #[Field(type: 'string', length: 100)]
-    public string $action; // project.created, build.started, deploy.live …
+    #[Field(type: 'integer', nullable: true)]
+    public ?int $project_id = null;
 
-    #[Field(type: 'string', length: 100)]
-    public string $entity_type; // project, build, deployment, task …
+    #[Field(type: 'string', length: 50)]
+    public string $entity_type;
 
     #[Field(type: 'integer')]
     public int $entity_id;
 
+    #[Field(type: 'string', length: 50)]
+    public string $action;
+
     #[Field(type: 'json', nullable: true)]
     public ?array $changes = null;
 
-    #[Field(type: 'ipAddress', nullable: true)]
+    #[Field(type: 'string', length: 45, nullable: true)]
     public ?string $ip_address = null;
 
     #[Field(type: 'string', length: 500, nullable: true)]
@@ -40,6 +43,14 @@ class ActivityLog
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
-    #[ManyToOne(targetEntity: Organization::class)]
+    // --- Relationships ---
+
+    #[ManyToOne(targetEntity: Organization::class, inversedBy: 'activityLog')]
     public ?Organization $organization = null;
+
+    #[ManyToOne(targetEntity: User::class)]
+    public ?User $user = null;
+
+    #[ManyToOne(targetEntity: Project::class)]
+    public ?Project $project = null;
 }

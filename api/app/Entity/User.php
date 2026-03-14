@@ -16,9 +16,6 @@ use MonkeysLegion\Auth\Trait\AuthenticatableTrait;
 use MonkeysLegion\Auth\Trait\HasRolesTrait;
 use MonkeysLegion\Auth\Trait\HasPermissionsTrait;
 
-/**
- * User entity — extended with MonkeysCloud platform fields.
- */
 #[Entity(table: 'users')]
 class User implements
     AuthenticatableInterface,
@@ -41,13 +38,29 @@ class User implements
     #[Field(type: 'integer', default: 1)]
     public int $token_version = 1;
 
-    // --- MonkeysCloud platform fields ---
-
     #[Field(type: 'string', length: 100)]
     public string $name;
 
     #[Field(type: 'string', length: 500, nullable: true)]
     public ?string $avatar_url = null;
+
+    #[Field(type: 'string', length: 255, nullable: true)]
+    public ?string $two_factor_secret = null;
+
+    #[Field(type: 'boolean', default: false)]
+    public bool $two_factor_enabled = false;
+
+    #[Field(type: 'json', nullable: true)]
+    public ?array $two_factor_recovery_codes = null;
+
+    #[Field(type: 'datetime', nullable: true)]
+    public ?\DateTimeImmutable $email_verified_at = null;
+
+    #[Field(type: 'datetime', nullable: true)]
+    public ?\DateTimeImmutable $last_login_at = null;
+
+    #[Field(type: 'string', length: 45, nullable: true)]
+    public ?string $last_login_ip = null;
 
     #[Field(type: 'string', length: 50, default: 'UTC')]
     public string $timezone = 'UTC';
@@ -55,29 +68,17 @@ class User implements
     #[Field(type: 'string', length: 10, default: 'en')]
     public string $locale = 'en';
 
-    #[Field(type: 'enum', enumValues: ['active', 'suspended', 'banned'], default: 'active')]
+    #[Field(type: 'boolean', default: false)]
+    public bool $is_admin = false;
+
+    #[Field(type: 'enum', enumValues: ['active', 'suspended', 'deleted'], default: 'active')]
     public string $status = 'active';
 
-    #[Field(type: 'ipAddress', nullable: true)]
-    public ?string $last_login_ip = null;
+    #[Field(type: 'datetime', default: 'CURRENT_TIMESTAMP')]
+    public \DateTimeImmutable|string|null $created_at = null;
 
-    #[Field(type: 'datetime', nullable: true)]
-    public ?\DateTimeImmutable $last_login_at = null;
-
-    #[Field(type: 'datetime', nullable: true)]
-    public ?\DateTimeImmutable $email_verified_at = null;
-
-    #[Field(type: 'string', length: 255, nullable: true)]
-    public ?string $two_factor_secret = null;
-
-    #[Field(type: 'json', nullable: true)]
-    public ?array $two_factor_recovery_codes = null;
-
-    #[Field(type: 'datetime')]
-    public \DateTimeImmutable $created_at;
-
-    #[Field(type: 'datetime')]
-    public \DateTimeImmutable $updated_at;
+    #[Field(type: 'datetime', default: 'CURRENT_TIMESTAMP')]
+    public \DateTimeImmutable|string|null $updated_at = null;
 
     // --- Relationships ---
 
@@ -89,6 +90,34 @@ class User implements
 
     #[OneToMany(targetEntity: OrganizationMember::class, mappedBy: 'user_id')]
     public array $memberships = [];
+
+    #[OneToMany(targetEntity: Organization::class, mappedBy: 'owner_id')]
+    public array $organizations = [];
+
+    #[OneToMany(targetEntity: Notification::class, mappedBy: 'user_id')]
+    public array $notifications = [];
+
+    #[OneToMany(targetEntity: ApiKey::class, mappedBy: 'user_id')]
+    public array $apiKeys = [];
+
+    #[OneToMany(targetEntity: TimeEntry::class, mappedBy: 'user_id')]
+    public array $timeEntries = [];
+
+    // ----------------------------------------------------------
+    // Magic setter for auto-converting datetime strings from DB
+    // ----------------------------------------------------------
+
+    public function __set(string $name, mixed $value): void
+    {
+        // Convert datetime strings from DatabaseUserProvider's naive hydrator
+        if (in_array($name, ['created_at', 'updated_at', 'email_verified_at', 'last_login_at']) && is_string($value)) {
+            $value = new \DateTimeImmutable($value);
+        }
+        if (in_array($name, ['two_factor_enabled', 'is_admin']) && is_int($value)) {
+            $value = (bool) $value;
+        }
+        $this->$name = $value;
+    }
 
     // ----------------------------------------------------------
     // Accessors / helpers
@@ -135,6 +164,11 @@ class User implements
         return $this;
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->is_admin;
+    }
+
     public function markEmailVerified(?\DateTimeImmutable $at = null): self
     {
         $this->email_verified_at = $at ?? new \DateTimeImmutable();
@@ -159,16 +193,22 @@ class User implements
         $this->two_factor_recovery_codes = $codes;
         return $this;
     }
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): ?\DateTimeImmutable
     {
+        if (is_string($this->created_at)) {
+            $this->created_at = new \DateTimeImmutable($this->created_at);
+        }
         return $this->created_at;
     }
-    public function getUpdatedAt(): \DateTimeImmutable
+    public function getUpdatedAt(): ?\DateTimeImmutable
     {
+        if (is_string($this->updated_at)) {
+            $this->updated_at = new \DateTimeImmutable($this->updated_at);
+        }
         return $this->updated_at;
     }
 
-    // Required by AuthenticatableInterface
+    // AuthenticatableInterface
     public function getAuthIdentifier(): int|string
     {
         return $this->id;
@@ -183,6 +223,6 @@ class User implements
     }
     public function hasTwoFactorEnabled(): bool
     {
-        return $this->two_factor_secret !== null;
+        return $this->two_factor_enabled;
     }
 }

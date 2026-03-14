@@ -16,8 +16,19 @@ class Notification
     #[Field(type: 'integer')]
     public int $user_id;
 
-    #[Field(type: 'string', length: 50)]
-    public string $type; // build_failed, pr_opened, deploy_live, task_assigned …
+    #[Field(type: 'integer')]
+    public int $organization_id;
+
+    #[Field(type: 'enum', enumValues: [
+        'build_failed',
+        'pr_review',
+        'task_assigned',
+        'deploy_done',
+        'invitation',
+        'mention',
+        'ai_alert'
+    ])]
+    public string $type;
 
     #[Field(type: 'string', length: 255)]
     public string $title;
@@ -25,18 +36,29 @@ class Notification
     #[Field(type: 'text', nullable: true)]
     public ?string $body = null;
 
-    #[Field(type: 'string', length: 500, nullable: true)]
-    public ?string $action_url = null;
+    #[Field(type: 'string', length: 50, nullable: true)]
+    public ?string $entity_type = null;
 
-    #[Field(type: 'json', nullable: true)]
-    public ?array $data = null;
+    #[Field(type: 'integer', nullable: true)]
+    public ?int $entity_id = null;
 
     #[Field(type: 'datetime', nullable: true)]
     public ?\DateTimeImmutable $read_at = null;
 
+    #[Field(type: 'enum', enumValues: ['in_app', 'email', 'slack', 'webhook'], default: 'in_app')]
+    public string $channel = 'in_app';
+
+    #[Field(type: 'datetime', nullable: true)]
+    public ?\DateTimeImmutable $sent_at = null;
+
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
-    #[ManyToOne(targetEntity: User::class)]
+    // --- Relationships ---
+
+    #[ManyToOne(targetEntity: User::class, inversedBy: 'notifications')]
     public ?User $user = null;
+
+    #[ManyToOne(targetEntity: Organization::class)]
+    public ?Organization $organization = null;
 }

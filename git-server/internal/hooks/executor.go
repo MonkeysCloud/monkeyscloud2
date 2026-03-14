@@ -6,12 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog/log"
 )
+
+// validHexSHA matches a 40-character lowercase hex string.
+var validHexSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 // RefUpdate represents a single ref update from a git push.
 type RefUpdate struct {
@@ -22,7 +26,9 @@ type RefUpdate struct {
 
 // Branch extracts the branch name from the ref.
 func (r RefUpdate) Branch() string {
-	return strings.TrimPrefix(r.RefName, "refs/heads/")
+	name := strings.TrimPrefix(r.RefName, "refs/heads/")
+	// Strip null bytes that may leak from git pack protocol
+	return strings.ReplaceAll(name, "\x00", "")
 }
 
 // IsNewBranch returns true if this is a new branch.
@@ -72,11 +78,11 @@ func (e *Executor) PreReceive(ctx context.Context, org, project string, updates 
 
 		// Call platform API to validate branch protection
 		resp, err := e.callPlatformAPI(ctx, "POST", "/internal/git/pre-receive", map[string]interface{}{
-			"org":        org,
-			"project":    project,
-			"branch":     update.Branch(),
-			"old_sha":    update.OldSHA,
-			"new_sha":    update.NewSHA,
+			"org":     org,
+			"project": project,
+			"branch":  update.Branch(),
+			"old_sha": update.OldSHA,
+			"new_sha": update.NewSHA,
 		})
 		if err != nil {
 			log.Warn().Err(err).Msg("Pre-receive API call failed, allowing push")
@@ -101,6 +107,11 @@ func (e *Executor) PostReceive(org, project string, updates []RefUpdate) {
 	ctx := context.Background()
 
 	for _, update := range updates {
+		// Skip invalid ref updates (binary pack data parsed as refs)
+		if !validHexSHA.MatchString(update.OldSHA) || !validHexSHA.MatchString(update.NewSHA) {
+			continue
+		}
+
 		if update.IsDeleteBranch() {
 			continue
 		}
@@ -116,12 +127,36 @@ func (e *Executor) PostReceive(org, project string, updates []RefUpdate) {
 		// 3. Fire webhooks via platform API
 		go e.fireWebhooks(ctx, org, project, branch, update)
 
+		// 4. Notify WebSocket clients about the push (real-time PR updates)
+		go e.publishPREvent(ctx, org, project, branch, update.NewSHA, "push")
+
+		shortSHA := update.NewSHA
+		if len(shortSHA) > 8 {
+			shortSHA = shortSHA[:8]
+		}
+
 		log.Info().
 			Str("org", org).
 			Str("project", project).
 			Str("branch", branch).
-			Str("sha", update.NewSHA[:8]).
+			Str("sha", shortSHA).
 			Msg("Post-receive hook executed")
+	}
+}
+
+// publishPREvent notifies WebSocket clients about branch activity relevant to PRs.
+func (e *Executor) publishPREvent(ctx context.Context, org, project, branch, sha, action string) {
+	payload := map[string]string{
+		"org":     org,
+		"project": project,
+		"branch":  branch,
+		"sha":     sha,
+		"action":  action,
+	}
+	data, _ := json.Marshal(payload)
+	err := e.rdb.Publish(ctx, "ws:pr", string(data)).Err()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to publish PR event to Redis")
 	}
 }
 

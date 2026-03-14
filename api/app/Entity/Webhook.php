@@ -23,22 +23,27 @@ class Webhook
     public string $secret;
 
     #[Field(type: 'json')]
-    public array $events; // push, pr_opened, pr_merged, build_passed, deploy_live …
+    public array $events;
 
     #[Field(type: 'boolean', default: true)]
-    public bool $active = true;
+    public bool $is_active = true;
 
     #[Field(type: 'datetime', nullable: true)]
-    public ?\DateTimeImmutable $last_triggered_at = null;
+    public ?\DateTimeImmutable $last_delivery_at = null;
 
     #[Field(type: 'integer', nullable: true)]
-    public ?int $last_response_code = null;
+    public ?int $last_status = null;
+
+    #[Field(type: 'integer', default: 0)]
+    public int $failure_count = 0;
 
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $updated_at;
+
+    // --- Relationships ---
 
     #[ManyToOne(targetEntity: Project::class, inversedBy: 'webhooks')]
     public ?Project $project = null;

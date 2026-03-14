@@ -1,0 +1,127 @@
+services:
+  caddy_proxy:
+    image: caddy:2.8-alpine
+    container_name: monkeyscloud-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - monkeyscloud-network
+    depends_on:
+      - dashboard
+      - api
+      - socket-server
+      - git-server
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: monkeyscloud-dashboard
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.monkeys.cloud
+      - NEXT_PUBLIC_SOCKET_URL=https://ws.monkeys.cloud
+    networks:
+      - monkeyscloud-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: monkeyscloud-api
+    restart: unless-stopped
+    volumes:
+      - .:/var/www
+    environment:
+      - APP_ENV=production
+      - GIT_SERVER_URL=http://git-server:8080
+      - GIT_SERVER_PUBLIC_URL=https://git.monkeys.cloud
+      - REDIS_URL=redis://redis:6379
+      - MYSQL_URL=mysql://monkeyscloud:monkeyscloud@mysql:3306/monkeyscloud
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - SOCKET_SERVER_URL=http://socket-server:3000
+    networks:
+      - monkeyscloud-network
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+
+  socket-server:
+    build:
+      context: ./socket-server
+      dockerfile: Dockerfile
+    container_name: monkeyscloud-socket
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://api:80
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - monkeyscloud-network
+    depends_on:
+      - redis
+
+  git-server:
+    build:
+      context: ./git-server
+      dockerfile: Dockerfile
+    container_name: monkeyscloud-git
+    restart: unless-stopped
+    ports:
+      - "2222:2222" # Expose SSH publicly for Git clone over SSH
+    volumes:
+      - /mnt/git-data:/var/lib/git # Mount the dedicated SSD here!
+    environment:
+      - API_URL=http://api:80
+    networks:
+      - monkeyscloud-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: monkeyscloud-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: monkeyscloud
+      MYSQL_USER: monkeyscloud
+      MYSQL_PASSWORD: monkeyscloud
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - monkeyscloud-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: monkeyscloud-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - monkeyscloud-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: monkeyscloud-rabbitmq
+    restart: unless-stopped
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - monkeyscloud-network
+
+networks:
+  monkeyscloud-network:
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:

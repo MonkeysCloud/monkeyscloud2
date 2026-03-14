@@ -19,14 +19,14 @@ class Subscription
     #[Field(type: 'integer')]
     public int $plan_id;
 
-    #[Field(type: 'enum', enumValues: ['active', 'past_due', 'cancelled', 'trialing'], default: 'trialing')]
+    #[Field(type: 'string', length: 100, nullable: true)]
+    public ?string $stripe_subscription_id = null;
+
+    #[Field(type: 'enum', enumValues: ['active', 'past_due', 'cancelled', 'trialing', 'paused'], default: 'trialing')]
     public string $status = 'trialing';
 
     #[Field(type: 'enum', enumValues: ['monthly', 'yearly'], default: 'monthly')]
-    public string $billing_period = 'monthly';
-
-    #[Field(type: 'string', length: 100, nullable: true)]
-    public ?string $stripe_subscription_id = null;
+    public string $billing_cycle = 'monthly';
 
     #[Field(type: 'datetime', nullable: true)]
     public ?\DateTimeImmutable $trial_ends_at = null;
@@ -45,6 +45,8 @@ class Subscription
 
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $updated_at;
+
+    // --- Relationships ---
 
     #[ManyToOne(targetEntity: Organization::class)]
     public ?Organization $organization = null;

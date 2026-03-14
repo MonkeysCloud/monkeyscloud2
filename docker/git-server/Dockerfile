@@ -28,7 +28,8 @@ RUN apk add --no-cache \
     git \
     openssh-client \
     ca-certificates \
-    tzdata
+    tzdata \
+    docker-cli
 
 # Create non-root user
 RUN adduser -D -h /app gitserver
@@ -42,9 +43,8 @@ RUN mkdir -p /var/lib/git && chown gitserver:gitserver /var/lib/git
 # Git config
 RUN git config --system http.receivepack true \
     && git config --system http.uploadpack true \
-    && git config --system init.defaultBranch main
-
-USER gitserver
+    && git config --system init.defaultBranch main \
+    && git config --system safe.directory '*'
 WORKDIR /app
 
 # Expose HTTP + gRPC ports

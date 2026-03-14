@@ -5,8 +5,9 @@ namespace App\Entity;
 
 use MonkeysLegion\Entity\Attributes\Entity;
 use MonkeysLegion\Entity\Attributes\Field;
-use MonkeysLegion\Entity\Attributes\OneToMany;
 use MonkeysLegion\Entity\Attributes\ManyToOne;
+use MonkeysLegion\Entity\Attributes\OneToMany;
+use MonkeysLegion\Entity\Attributes\OneToOne;
 
 #[Entity(table: 'organizations')]
 class Organization
@@ -50,13 +51,38 @@ class Organization
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $updated_at;
 
-    // Relationships
+    // --- Relationships ---
+
     #[ManyToOne(targetEntity: User::class)]
     public ?User $owner = null;
+
+    #[ManyToOne(targetEntity: Plan::class)]
+    public ?Plan $plan = null;
 
     #[OneToMany(targetEntity: OrganizationMember::class, mappedBy: 'organization_id')]
     public array $members = [];
 
     #[OneToMany(targetEntity: Project::class, mappedBy: 'organization_id')]
     public array $projects = [];
+
+    #[OneToMany(targetEntity: Board::class, mappedBy: 'organization_id')]
+    public array $boards = [];
+
+    #[OneToMany(targetEntity: TaskLabel::class, mappedBy: 'organization_id')]
+    public array $labels = [];
+
+    #[OneToMany(targetEntity: Invitation::class, mappedBy: 'organization_id')]
+    public array $invitations = [];
+
+    #[OneToMany(targetEntity: ApiKey::class, mappedBy: 'organization_id')]
+    public array $apiKeys = [];
+
+    #[OneToMany(targetEntity: UsageRecord::class, mappedBy: 'organization_id')]
+    public array $usageRecords = [];
+
+    #[OneToMany(targetEntity: AiRequest::class, mappedBy: 'organization_id')]
+    public array $aiRequests = [];
+
+    #[OneToMany(targetEntity: ActivityLog::class, mappedBy: 'organization_id')]
+    public array $activityLog = [];
 }

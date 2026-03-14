@@ -14,7 +14,7 @@ class Commit
     public int $id;
 
     #[Field(type: 'integer')]
-    public int $project_id;
+    public int $repository_id;
 
     #[Field(type: 'char', length: 40)]
     public string $sha;
@@ -29,10 +29,13 @@ class Commit
     public string $author_email;
 
     #[Field(type: 'integer', nullable: true)]
-    public ?int $author_user_id = null;
+    public ?int $user_id = null;
 
-    #[Field(type: 'string', length: 100)]
+    #[Field(type: 'string', length: 255)]
     public string $branch;
+
+    #[Field(type: 'integer', default: 0)]
+    public int $files_changed = 0;
 
     #[Field(type: 'integer', default: 0)]
     public int $additions = 0;
@@ -40,15 +43,17 @@ class Commit
     #[Field(type: 'integer', default: 0)]
     public int $deletions = 0;
 
-    #[Field(type: 'integer', default: 0)]
-    public int $files_changed = 0;
-
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $committed_at;
 
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
-    #[ManyToOne(targetEntity: Project::class)]
-    public ?Project $project = null;
+    // --- Relationships ---
+
+    #[ManyToOne(targetEntity: Repository::class, inversedBy: 'commits')]
+    public ?Repository $repository = null;
+
+    #[ManyToOne(targetEntity: User::class)]
+    public ?User $user = null;
 }

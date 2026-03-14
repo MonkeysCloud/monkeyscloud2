@@ -1,16 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --primary: #1A73E8;
-  --dark: #1B2A4A;
-  --accent: #FF6D00;
-  --light-bg: #F8FAFC;
-  --gray-text: #6B7280;
-  --foreground: #1B2A4A;
+  --primary: #1a73e8;
+  --dark: #1b2a4a;
+  --accent: #ff6d00;
+  --light-bg: #f8fafc;
+  --gray-text: #6b7280;
+  --foreground: #1b2a4a;
   --background: #ffffff;
 }
 
@@ -24,14 +24,26 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: "Inter", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
 }
 
-code, pre, .font-mono {
+code,
+pre,
+.font-mono {
   font-family: "JetBrains Mono", "Fira Code", monospace;
 }
 
@@ -58,4 +70,13 @@ code, pre, .font-mono {
 .mega-backdrop {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

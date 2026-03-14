@@ -19,7 +19,7 @@ class Invitation
     #[Field(type: 'string', length: 255)]
     public string $email;
 
-    #[Field(type: 'enum', enumValues: ['admin', 'developer', 'viewer'])]
+    #[Field(type: 'enum', enumValues: ['owner', 'admin', 'developer', 'viewer'])]
     public string $role;
 
     #[Field(type: 'string', length: 64, unique: true)]
@@ -37,6 +37,14 @@ class Invitation
     #[Field(type: 'datetime')]
     public \DateTimeImmutable $created_at;
 
-    #[ManyToOne(targetEntity: Organization::class)]
+    #[Field(type: 'datetime', nullable: true)]
+    public ?\DateTimeImmutable $deleted_at = null;
+
+    // --- Relationships ---
+
+    #[ManyToOne(targetEntity: Organization::class, inversedBy: 'invitations')]
     public ?Organization $organization = null;
+
+    #[ManyToOne(targetEntity: User::class)]
+    public ?User $inviter = null;
 }
