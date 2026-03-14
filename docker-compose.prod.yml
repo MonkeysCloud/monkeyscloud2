@@ -44,6 +44,12 @@ services:
       - GIT_SERVER_PUBLIC_URL=https://git.monkeys.cloud
       - REDIS_URL=redis://redis:6379
       - POSTGRES_URL=postgres://monkeyscloud:monkeyscloud@postgres:5432/monkeyscloud
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=monkeyscloud
+      - DB_USERNAME=monkeyscloud
+      - DB_PASSWORD=monkeyscloud
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - SOCKET_SERVER_URL=http://socket-server:3000
     networks:
