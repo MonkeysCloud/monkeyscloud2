@@ -52,7 +52,7 @@ WORKDIR /app
 COPY api/composer.json api/composer.lock* ./
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction --ignore-platform-req=ext-pdo_mysql
 
 # Copy application source
 COPY api/ .
