@@ -20,8 +20,8 @@ services:
 
   dashboard:
     build:
-      context: ./dashboard
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/dashboard/Dockerfile
     container_name: monkeyscloud-dashboard
     restart: unless-stopped
     environment:
@@ -55,8 +55,8 @@ services:
 
   socket-server:
     build:
-      context: ./websocket
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/websocket/Dockerfile
     container_name: monkeyscloud-socket
     restart: unless-stopped
     environment:
@@ -70,8 +70,8 @@ services:
 
   git-server:
     build:
-      context: ./git-server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/git-server/Dockerfile
     container_name: monkeyscloud-git
     restart: unless-stopped
     ports:
