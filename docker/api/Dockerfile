@@ -57,7 +57,7 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 # Copy application source
 COPY api/ .
 
-# Create .env from example (framework requires it at boot)
+# Copy .env.example as fallback (entrypoint.sh will overwrite at runtime)
 RUN cp .env.example .env || touch .env
 
 # Custom PHP configuration
@@ -77,5 +77,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Start FrankenPHP with Caddyfile
-ENTRYPOINT ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+# Copy entrypoint script
+COPY docker/api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Start via entrypoint (generates .env from env vars, then starts FrankenPHP)
+ENTRYPOINT ["/entrypoint.sh"]
