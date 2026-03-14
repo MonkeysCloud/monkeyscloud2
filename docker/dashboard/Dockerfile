@@ -21,8 +21,10 @@ COPY dashboard/ .
 # Set build-time env vars (can be overridden via docker-compose build args)
 ARG NEXT_PUBLIC_API_URL=https://api.monkeys.cloud
 ARG NEXT_PUBLIC_SOCKET_URL=https://ws.monkeys.cloud
+ARG NEXT_PUBLIC_GIT_URL=https://git.monkeys.cloud
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_GIT_URL=$NEXT_PUBLIC_GIT_URL
 
 # Build the production bundle
 RUN npm run build

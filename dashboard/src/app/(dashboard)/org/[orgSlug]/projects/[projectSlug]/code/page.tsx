@@ -176,12 +176,15 @@ export default function CodePage() {
   const [readmeContent, setReadmeContent] = useState<string | null>(null);
   const [lastCommit, setLastCommit] = useState<CommitInfo | null>(null);
   const [showCloneMenu, setShowCloneMenu] = useState(false);
+  const [cloneTab, setCloneTab] = useState<"https" | "ssh">("https");
   const [treeCommits, setTreeCommits] = useState<Record<string, TreeEntryCommit>>({});
 
   // Only use orgId when it matches the URL slug (prevents stale org ID in API calls)
   const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
-  const cloneUrl = `http://localhost:3001/git/${params.orgSlug}/${projectSlug}.git`;
+  const gitBaseUrl = process.env.NEXT_PUBLIC_GIT_URL || "http://localhost:3001";
+  const cloneUrl = `${gitBaseUrl}/git/${params.orgSlug}/${projectSlug}.git`;
+  const sshCloneUrl = `git@${(gitBaseUrl.replace(/^https?:\/\//, ''))}:${params.orgSlug}/${projectSlug}.git`;
 
   // Determine what we're viewing
   const isViewingFile = fileContent !== null;
@@ -621,18 +624,28 @@ export default function CodePage() {
             {showCloneMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowCloneMenu(false)} />
-                <div className="absolute top-full right-0 mt-1 z-50 w-80 rounded-lg border border-surface-600 bg-surface-800 shadow-xl p-3 space-y-2">
-                  <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Clone with HTTPS</div>
+                <div className="absolute top-full right-0 mt-1 z-50 w-96 rounded-lg border border-surface-600 bg-surface-800 shadow-xl p-3 space-y-3">
+                  {/* Protocol tabs */}
+                  <div className="flex gap-1 bg-surface-900 rounded-md p-0.5">
+                    <button
+                      onClick={() => setCloneTab("https")}
+                      className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors ${cloneTab === "https" ? "bg-brand-500/20 text-brand-400" : "text-surface-400 hover:text-surface-300"}`}
+                    >HTTPS</button>
+                    <button
+                      onClick={() => setCloneTab("ssh")}
+                      className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors ${cloneTab === "ssh" ? "bg-brand-500/20 text-brand-400" : "text-surface-400 hover:text-surface-300"}`}
+                    >SSH</button>
+                  </div>
                   <div className="flex items-center gap-1">
                     <input
                       readOnly
-                      value={cloneUrl}
+                      value={cloneTab === "https" ? cloneUrl : sshCloneUrl}
                       className="flex-1 px-2.5 py-1.5 rounded-md border border-surface-600 bg-surface-900 text-xs text-white font-mono select-all focus:outline-none"
                       onClick={(e) => (e.target as HTMLInputElement).select()}
                     />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(cloneUrl);
+                        navigator.clipboard.writeText(cloneTab === "https" ? cloneUrl : sshCloneUrl);
                         setCloneCopied(true);
                         setTimeout(() => setCloneCopied(false), 2000);
                       }}
@@ -642,8 +655,13 @@ export default function CodePage() {
                     </button>
                   </div>
                   <p className="text-[10px] text-surface-500">
-                    <code className="bg-surface-700 px-1 rounded">git clone {cloneUrl}</code>
+                    <code className="bg-surface-700 px-1 rounded">git clone {cloneTab === "https" ? cloneUrl : sshCloneUrl}</code>
                   </p>
+                  {cloneTab === "https" && (
+                    <p className="text-[10px] text-surface-500">
+                      Use your <a href="/account/api-keys" className="text-brand-400 hover:underline">API key</a> as password when prompted.
+                    </p>
+                  )}
                 </div>
               </>
             )}

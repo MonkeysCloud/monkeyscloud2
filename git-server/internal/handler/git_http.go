@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -26,24 +28,87 @@ func NewGitHTTP(repoMgr *repository.Manager, hookExec *hooks.Executor) *GitHTTP 
 	return &GitHTTP{repoMgr: repoMgr, hookExec: hookExec}
 }
 
-// AuthMiddleware validates Git credentials (Basic Auth with token).
+// AuthMiddleware validates Git credentials (Basic Auth with API key token).
+// The user sends: username=x-token-auth, password=mc_xxxx...
+// We validate by calling the platform API's /api/v1/internal/validate-token endpoint.
 func (h *GitHTTP) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract Basic Auth credentials
-		username, password, ok := r.BasicAuth()
-		if !ok {
+		_, password, ok := r.BasicAuth()
+		if !ok || password == "" {
 			w.Header().Set("WWW-Authenticate", `Basic realm="MonkeysCloud Git"`)
 			http.Error(w, "Authentication required", http.StatusUnauthorized)
 			return
 		}
 
-		// TODO: Validate against platform API (JWT token as password)
-		// For now, accept any non-empty credentials in local dev
-		_ = username
-		_ = password
+		// Extract org from URL path: /{org}/{project}.git/...
+		org := chi.URLParam(r, "org")
+
+		// Determine required scope based on the operation
+		requiredScope := "read"
+		if strings.Contains(r.URL.Path, "git-receive-pack") {
+			requiredScope = "write"
+		}
+
+		// Validate token against platform API
+		valid, scopes, err := h.validateToken(password, org)
+		if err != nil {
+			log.Error().Err(err).Msg("Token validation error")
+			http.Error(w, "Authentication service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if !valid {
+			w.Header().Set("WWW-Authenticate", `Basic realm="MonkeysCloud Git"`)
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+
+		// Check scope
+		hasScope := false
+		for _, s := range scopes {
+			if s == requiredScope || s == "admin" {
+				hasScope = true
+				break
+			}
+		}
+		if !hasScope {
+			http.Error(w, "Insufficient permissions", http.StatusForbidden)
+			return
+		}
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// validateToken calls the platform API to verify an API key token.
+func (h *GitHTTP) validateToken(token, org string) (bool, []string, error) {
+	apiURL := os.Getenv("PLATFORM_API_URL")
+	if apiURL == "" {
+		apiURL = "http://api:8000"
+	}
+
+	payload := fmt.Sprintf(`{"token":"%s","org":"%s"}`, token, org)
+	resp, err := http.Post(apiURL+"/api/v1/internal/validate-token", "application/json", strings.NewReader(payload))
+	if err != nil {
+		return false, nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return false, nil, nil
+	}
+
+	var result struct {
+		Valid          bool     `json:"valid"`
+		UserID         int      `json:"user_id"`
+		OrganizationID int      `json:"organization_id"`
+		Scopes         []string `json:"scopes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false, nil, err
+	}
+
+	return result.Valid, result.Scopes, nil
 }
 
 // InfoRefs handles GET /{org}/{project}.git/info/refs?service=git-upload-pack|git-receive-pack

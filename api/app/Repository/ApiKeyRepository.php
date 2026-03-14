@@ -25,4 +25,9 @@ class ApiKeyRepository extends EntityRepository
     {
         return $this->findBy(['organization_id' => $orgId, 'revoked_at' => null]);
     }
+
+    public function findByUser(int $userId): array
+    {
+        return $this->findBy(['user_id' => $userId, 'revoked_at' => null]);
+    }
 }

@@ -42,6 +42,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   X,
+  Key,
 } from "lucide-react";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useNavStore } from "@/stores/nav-store";
@@ -384,6 +385,13 @@ export function Sidebar() {
                 icon={<Settings className="h-[18px] w-[18px]" />}
                 label="Account Settings"
                 active={pathname === "/account"}
+                collapsed={collapsed && !mobileSidebarOpen}
+              />
+              <NavLink
+                href="/account/api-keys"
+                icon={<Key className="h-[18px] w-[18px]" />}
+                label="API Keys"
+                active={pathname === "/account/api-keys"}
                 collapsed={collapsed && !mobileSidebarOpen}
               />
             </>
