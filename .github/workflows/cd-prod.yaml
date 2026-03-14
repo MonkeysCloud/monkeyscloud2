@@ -1,9 +1,8 @@
 name: CD Production
 
 on:
-  # push trigger disabled until WIF secrets are configured
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       service:
