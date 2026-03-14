@@ -86,11 +86,28 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 30
 ---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: api-backend-config
+  namespace: monkeyscloud
+spec:
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    port: 8000
+    requestPath: /health
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: api
   namespace: monkeyscloud
+  annotations:
+    cloud.google.com/backend-config: '{"default": "api-backend-config"}'
 spec:
   selector:
     app: api
