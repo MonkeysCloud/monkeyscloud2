@@ -16,11 +16,12 @@ RUN apk add --no-cache \
     oniguruma-dev \
     postgresql-dev \
     linux-headers \
-    $PHPIZE_DEPS
+    linux-headers
 
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
+# Install PHP extensions using install-php-extensions (pre-compiled binaries)
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions \
     pdo_pgsql \
     mbstring \
     zip \
@@ -29,14 +30,9 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     opcache \
     pcntl \
     bcmath \
-    sockets
-
-# Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
-
-# Install UUID extension
-RUN apk add --no-cache util-linux-dev \
-    && pecl install uuid && docker-php-ext-enable uuid
+    sockets \
+    redis \
+    uuid
 
 # Install Terraform CLI for environment provisioning
 RUN TERRAFORM_VERSION="1.9.8" \
