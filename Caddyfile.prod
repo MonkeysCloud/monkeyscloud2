@@ -15,7 +15,7 @@ api.monkeys.cloud {
 
 # WebSockets
 ws.monkeys.cloud {
-	reverse_proxy socket-server:3000
+	reverse_proxy socket-server:3002
 }
 
 # Git Server HTTP interface (Not SSH, SSH is on port 2222 directly)

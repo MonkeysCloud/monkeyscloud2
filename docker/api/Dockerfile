@@ -57,6 +57,9 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 # Copy application source
 COPY api/ .
 
+# Create .env from example (framework requires it at boot)
+RUN cp .env.example .env || touch .env
+
 # Custom PHP configuration
 COPY docker/api/php.ini /usr/local/etc/php/conf.d/99-monkeyscloud.ini
 
