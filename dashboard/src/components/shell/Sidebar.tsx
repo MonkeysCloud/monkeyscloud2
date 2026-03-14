@@ -206,26 +206,20 @@ export function Sidebar() {
   const [activeProject, setActiveProject] = useState<ProjectItem | null>(null);
   const [projectSearch, setProjectSearch] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(true);
-  const [prCount, setPrCount] = useState<number | null>(null);
 
-  // Fetch projects when org changes or pathname changes (e.g. after creating a project)
+  // Fetch projects only when org changes (not on every pathname change)
   useEffect(() => {
     async function loadProjects() {
-      if (!currentOrg?.id) {
-        // Don't set loading=false yet — auth may still be loading org
-        return;
-      }
+      if (!currentOrg?.id) return;
       setProjectsLoading(true);
       try {
         const res = await api.get<any>(`/api/v1/organizations/${currentOrg.id}/projects`);
         const list = res?.data ?? res;
         if (Array.isArray(list)) {
           setProjects(list);
-          // Set active project from URL or first project
           const projectSlugFromUrl = pathname.match(/\/projects\/([^/]+)/)?.[1];
           const match = projectSlugFromUrl ? list.find((p: any) => p.slug === projectSlugFromUrl) : null;
           setActiveProject(match || list[0] || null);
-          // Persist last project to localStorage
           if (projectSlugFromUrl) saveLastProject(projectSlugFromUrl);
         }
       } catch {
@@ -236,41 +230,22 @@ export function Sidebar() {
       }
     }
     loadProjects();
-  }, [currentOrg?.id, pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOrg?.id]);
 
-  // Fetch open PR count for the active project
+  // Sync active project with URL on navigation (no API call)
   useEffect(() => {
-    // Wait until projects are loaded and currentOrg matches the URL
-    if (projectsLoading || !currentOrg?.id || !activeProject?.slug) {
-      setPrCount(null);
-      return;
-    }
-    // Don't fetch if currentOrg hasn't synced with URL yet
-    if (slugFromUrl && currentOrg.slug !== slugFromUrl) return;
-    // Don't fetch on create project page
-    if (pathname.endsWith("/projects/create")) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("mc_token") : null;
-    if (!token) return;
-
-    let cancelled = false;
-    async function fetchPrCount() {
-      try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const res = await fetch(
-          `${apiBase}/api/v1/organizations/${currentOrg!.id}/projects/${activeProject!.slug}/pull-requests?status=open`,
-          { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
-        );
-        if (!cancelled && res.ok) {
-          const list = await res.json();
-          setPrCount(Array.isArray(list) ? list.length : 0);
-        }
-      } catch {
-        // silently ignore — no repo or network error
+    if (projects.length === 0) return;
+    const projectSlugFromUrl = pathname.match(/\/projects\/([^/]+)/)?.[1];
+    if (projectSlugFromUrl) {
+      const match = projects.find((p) => p.slug === projectSlugFromUrl);
+      if (match && match.slug !== activeProject?.slug) {
+        setActiveProject(match);
+        saveLastProject(projectSlugFromUrl);
       }
     }
-    fetchPrCount();
-    return () => { cancelled = true; };
-  }, [projectsLoading, currentOrg?.id, activeProject?.slug, pathname]);
+  }, [pathname, projects]);
+
 
   const orgRef = useRef<HTMLDivElement>(null);
   const projRef = useRef<HTMLDivElement>(null);
@@ -614,7 +589,7 @@ export function Sidebar() {
                             href={childHref}
                             icon={<child.icon className="h-3.5 w-3.5" />}
                             label={child.label}
-                            badge={child.id === "pull-requests" && prCount !== null ? String(prCount) : child.badge}
+                            badge={child.badge}
                             active={pathname.startsWith(childHref)}
                             collapsed={false}
                             indent
