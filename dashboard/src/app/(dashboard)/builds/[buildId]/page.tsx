@@ -17,7 +17,7 @@ const steps = [
   { name: "Push to Registry", status: "passed", duration: "12s", log: "Pushing gcr.io/monkeyscloud/api-gateway:v2.4.1...\nDigest: sha256:abc123...\nDone." },
 ];
 
-export default function BuildDetailPage({ params }: { params: { buildId: string } }) {
+export default function BuildDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}

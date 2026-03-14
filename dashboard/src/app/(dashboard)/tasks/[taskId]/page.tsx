@@ -22,7 +22,7 @@ const timeEntries = [
   { user: "Jorge", minutes: 60, note: "Redis integration + tests", date: "Feb 28" },
 ];
 
-export default function TaskDetailPage({ params }: { params: { taskId: string } }) {
+export default function TaskDetailPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main */}

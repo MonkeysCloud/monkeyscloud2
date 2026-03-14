@@ -3,6 +3,7 @@
 import { Card, CardTitle, Badge, StatusBadge, Button } from "@/components/ui";
 import { GitBranch, Clock, ExternalLink, Settings, Rocket, Hammer } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 // Mock project detail
 const project = {
@@ -23,7 +24,8 @@ const recentBuilds = [
   { id: 246, status: "passed", branch: "main", sha: "i7j8k9l", duration: "2m 08s", ago: "6h ago" },
 ];
 
-export default function ProjectDetailPage({ params }: { params: { projectId: string } }) {
+export default function ProjectDetailPage() {
+  const params = useParams<{ projectId: string }>();
   return (
     <div className="space-y-6">
       {/* Header */}

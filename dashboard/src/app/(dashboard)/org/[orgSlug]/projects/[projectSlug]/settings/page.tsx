@@ -3,7 +3,7 @@
 import { Card, CardTitle, Button, Input, Badge } from "@/components/ui";
 import { Trash2 } from "lucide-react";
 
-export default function ProjectSettingsPage({ params }: { params: { projectId: string } }) {
+export default function ProjectSettingsPage() {
   return (
     <div className="max-w-3xl space-y-8">
       <div>

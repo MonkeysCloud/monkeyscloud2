@@ -21,7 +21,7 @@ const comments = [
   { user: "Jorge", body: "Good call — added `burst_size` option in the config.", file: null, line: null, ago: "1h ago", resolved: false },
 ];
 
-export default function PullRequestDetailPage({ params }: { params: { prId: string } }) {
+export default function PullRequestDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
