@@ -67,7 +67,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - API_URL=http://api:80
+      - API_URL=http://api:8000
       - REDIS_URL=redis://redis:6379
     networks:
       - monkeyscloud-network
@@ -85,7 +85,7 @@ services:
     volumes:
       - /mnt/git-data:/var/lib/git # Mount the dedicated SSD here!
     environment:
-      - API_URL=http://api:80
+      - API_URL=http://api:8000
     networks:
       - monkeyscloud-network
 
