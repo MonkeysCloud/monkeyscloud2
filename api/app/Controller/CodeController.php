@@ -448,8 +448,7 @@ final class CodeController extends AbstractController
 
     private function resolveOrgSlug(int $orgId): ?string
     {
-        $org = $this->orgRepo->find($orgId);
-        return $org?->slug;
+        return $this->orgRepo->findSlugById($orgId);
     }
 
     private function gitServerUrl(): string

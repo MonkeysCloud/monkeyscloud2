@@ -57,4 +57,16 @@ class OrganizationRepository extends EntityRepository
         $stmt->execute(['uid' => $userId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Get just the slug for an organization by ID, raw SQL (no ORM overhead).
+     */
+    public function findSlugById(int $orgId): ?string
+    {
+        $pdo = $this->qb->pdo();
+        $stmt = $pdo->prepare('SELECT slug FROM organizations WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $orgId]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row ? $row['slug'] : null;
+    }
 }
