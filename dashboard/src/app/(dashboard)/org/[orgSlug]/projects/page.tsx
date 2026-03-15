@@ -11,6 +11,7 @@ import {
   Circle, Coffee, Layers
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 import { api } from "@/lib/api";
 
@@ -81,16 +82,24 @@ interface ProjectItem {
 }
 
 export default function ProjectsPage() {
-  const { currentOrg } = useAuthStore();
+  const params = useParams();
+  const orgSlugParam = params.orgSlug as string;
+  const { currentOrg, organizations } = useAuthStore();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Derive the target Org instance from the URL slug so we don't fetch the 
+  // localStorage cached org first and then double-fetch when Sidebar syncs it.
+  const targetOrg = orgSlugParam 
+    ? organizations.find((o) => o.slug === orgSlugParam)
+    : currentOrg;
+
   useEffect(() => {
     async function loadProjects() {
-      if (!currentOrg?.id) return;
+      if (!targetOrg?.id) return;
       setLoading(true);
       try {
-        const res = await api.get<any>(`/api/v1/organizations/${currentOrg.id}/projects`);
+        const res = await api.get<any>(`/api/v1/organizations/${targetOrg.id}/projects`);
         const list = res?.data ?? res;
         if (Array.isArray(list)) {
           setProjects(list);
@@ -102,9 +111,9 @@ export default function ProjectsPage() {
       }
     }
     loadProjects();
-  }, [currentOrg?.id]);
+  }, [targetOrg?.id]);
 
-  const orgBase = `/org/${currentOrg?.slug || "default"}`;
+  const orgBase = `/org/${targetOrg?.slug || orgSlugParam || "default"}`;
 
   if (loading) {
     return (

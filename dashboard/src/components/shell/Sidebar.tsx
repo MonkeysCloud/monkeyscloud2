@@ -210,7 +210,9 @@ export function Sidebar() {
 
   // Derive the target Org instance from the URL slug so we don't fetch the 
   // localStorage cached org first and then double-fetch when Sidebar syncs it.
-  const targetOrg = organizations.find((o) => o.slug === slugFromUrl) || currentOrg;
+  const targetOrg = slugFromUrl
+    ? organizations.find((o) => o.slug === slugFromUrl)
+    : currentOrg;
 
   // Fetch projects only when org changes (not on every pathname change)
   useEffect(() => {
