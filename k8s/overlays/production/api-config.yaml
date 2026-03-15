@@ -13,7 +13,7 @@ data:
   APP_ENV: "production"
   APP_DEBUG: "false"
   APP_URL: "https://api.monkeys.cloud"
-  DB_HOST: ""        # Injected by Terraform output (Cloud SQL private IP)
+  DB_HOST: "34.41.253.99"
   DB_PORT: "5432"
   DB_DATABASE: "monkeyscloud"
   REDIS_HOST: "redis.monkeyscloud.svc.cluster.local"     # Redis runs in monkeyscloud namespace
