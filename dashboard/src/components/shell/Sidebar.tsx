@@ -545,14 +545,12 @@ export function Sidebar() {
                 {filteredProjects.length === 0 && (
                   <div className="px-3 py-2 text-[13px] text-surface-500 text-center">No projects found</div>
                 )}
-                {filteredProjects.length > 8 && (
-                  <div className="border-t border-surface-800">
-                    <DropdownItem onMouseDown={(e: React.MouseEvent) => { e.stopPropagation(); window.location.href = `${orgBase}/projects`; }}>
-                      <FolderTree className="h-3.5 w-3.5 text-surface-400" />
-                      <span className="text-surface-300">View all {filteredProjects.length} projects</span>
-                    </DropdownItem>
-                  </div>
-                )}
+                <div className="border-t border-surface-800">
+                  <DropdownItem onMouseDown={(e: React.MouseEvent) => { e.stopPropagation(); window.location.href = `${orgBase}/projects`; }}>
+                    <FolderTree className="h-3.5 w-3.5 text-surface-400" />
+                    <span className="text-surface-300">View all projects</span>
+                  </DropdownItem>
+                </div>
                 <div className="border-t border-surface-800">
                   <DropdownItem onMouseDown={(e: React.MouseEvent) => { e.stopPropagation(); window.location.href = `${orgBase}/projects/create`; }}>
                     <Plus className="h-3.5 w-3.5 text-primary-400" />
