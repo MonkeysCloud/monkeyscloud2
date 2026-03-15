@@ -208,13 +208,17 @@ export function Sidebar() {
   const [projectSearch, setProjectSearch] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(true);
 
+  // Derive the target Org instance from the URL slug so we don't fetch the 
+  // localStorage cached org first and then double-fetch when Sidebar syncs it.
+  const targetOrg = organizations.find((o) => o.slug === slugFromUrl) || currentOrg;
+
   // Fetch projects only when org changes (not on every pathname change)
   useEffect(() => {
     async function loadProjects() {
-      if (!currentOrg?.id) return;
+      if (!targetOrg?.id) return;
       setProjectsLoading(true);
       try {
-        const res = await api.get<any>(`/api/v1/organizations/${currentOrg.id}/projects`);
+        const res = await api.get<any>(`/api/v1/organizations/${targetOrg.id}/projects`);
         const list = res?.data ?? res;
         if (Array.isArray(list)) {
           setProjects(list);
@@ -241,7 +245,7 @@ export function Sidebar() {
     }
     loadProjects();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrg?.id]);
+  }, [targetOrg?.id]);
 
   // Sync active project with URL on navigation (no API call)
   useEffect(() => {
