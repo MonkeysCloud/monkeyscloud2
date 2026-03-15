@@ -49,6 +49,11 @@ final class DeleteProjectJob
 
         try {
             // -----------------------------------------------------------
+            // 0) Delete the git repository on the git-server
+            // -----------------------------------------------------------
+            $this->deleteGitRepo($pdo, $projectId);
+
+            // -----------------------------------------------------------
             // 1) Collect board IDs owned by this project
             //    (tasks, sprints, labels reference board_id, not project_id)
             // -----------------------------------------------------------
@@ -208,4 +213,60 @@ final class DeleteProjectJob
             error_log("DELETE_PROJECT_JOB: skip {$table} — {$e->getMessage()}");
         }
     }
+
+    /** Call the git-server DELETE API to remove the repo on disk. */
+    private function deleteGitRepo(\PDO $pdo, int $projectId): void
+    {
+        try {
+            // Get the project slug and organization slug
+            $stmt = $pdo->prepare(
+                'SELECT p.slug AS project_slug, o.slug AS org_slug
+                 FROM projects p
+                 JOIN organizations o ON o.id = p.organization_id
+                 WHERE p.id = :id'
+            );
+            $stmt->execute(['id' => $projectId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$row || empty($row['project_slug']) || empty($row['org_slug'])) {
+                error_log("DELETE_PROJECT_JOB: cannot resolve org/project slugs for project #{$projectId}");
+                return;
+            }
+
+            $orgSlug = $row['org_slug'];
+            $projectSlug = $row['project_slug'];
+            $gitServerUrl = rtrim(
+                $_ENV['GIT_SERVER_URL'] ?? getenv('GIT_SERVER_URL') ?: 'http://git-server',
+                '/'
+            );
+
+            $url = "{$gitServerUrl}/api/repos/{$orgSlug}/{$projectSlug}";
+            error_log("DELETE_PROJECT_JOB: deleting git repo at {$url}");
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_CUSTOMREQUEST  => 'DELETE',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+            ]);
+            $body = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr = curl_error($ch);
+            curl_close($ch);
+
+            if ($body === false || $httpCode === 0) {
+                error_log("DELETE_PROJECT_JOB: git-server unreachable — {$curlErr}");
+            } elseif ($httpCode >= 400) {
+                error_log("DELETE_PROJECT_JOB: git-server returned HTTP {$httpCode} — {$body}");
+            } else {
+                error_log("DELETE_PROJECT_JOB: git repo deleted successfully ({$orgSlug}/{$projectSlug})");
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal: continue with DB cleanup even if git repo deletion fails
+            error_log("DELETE_PROJECT_JOB: git repo deletion error — {$e->getMessage()}");
+        }
+    }
 }
+
