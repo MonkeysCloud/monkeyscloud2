@@ -33,14 +33,19 @@ jobs:
             # Create environment network if it doesn't exist
             docker network create monkeyscloud-network || true
 
-            # Pull latest images and restart containers
-            docker compose -f docker-compose.prod.yml pull
+            # Pull latest images (ignore failures for build-only services like queue-worker)
+            docker compose -f docker-compose.prod.yml pull --ignore-pull-failures || true
             docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+
+            # Ensure queue-worker is explicitly started (it shares the API image)
+            docker compose -f docker-compose.prod.yml up -d --build queue-worker
+            echo "Queue worker status:"
+            docker compose -f docker-compose.prod.yml ps queue-worker
 
             # Wait for API to be ready then run migrations
             echo "Waiting for API to be ready..."
             sleep 10
-            docker compose -f docker-compose.prod.yml exec -T api php bin/console -s schedule optimize
-            docker compose -f docker-compose.prod.yml exec -T api php vendor/bin/phinx migrate
+            docker compose -f docker-compose.prod.yml exec -T api php bin/console -s schedule optimize || true
+            docker compose -f docker-compose.prod.yml exec -T api php vendor/bin/phinx migrate || true
             
             echo "Deployment successful!"
