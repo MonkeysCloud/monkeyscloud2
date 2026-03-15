@@ -183,7 +183,7 @@ export default function CodePage() {
   const orgId = currentOrg?.slug === params.orgSlug ? currentOrg?.id : undefined;
   const projectSlug = params.projectSlug;
   const gitBaseUrl = process.env.NEXT_PUBLIC_GIT_URL || "http://localhost:3001";
-  const cloneUrl = `${gitBaseUrl}/git/${params.orgSlug}/${projectSlug}.git`;
+  const cloneUrl = `${gitBaseUrl}/${params.orgSlug}/${projectSlug}.git`;
   const sshCloneUrl = `git@${(gitBaseUrl.replace(/^https?:\/\//, ''))}:${params.orgSlug}/${projectSlug}.git`;
 
   // Determine what we're viewing
