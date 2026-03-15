@@ -12,6 +12,7 @@ resources:
   - dashboard.yaml
   - git-server.yaml
   - cicd-worker.yaml
+  - queue-worker.yaml
   - ingress.yaml
   - network-policies.yaml
 
