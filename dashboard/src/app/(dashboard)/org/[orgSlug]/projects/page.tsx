@@ -102,7 +102,7 @@ export default function ProjectsPage() {
         const res = await api.get<any>(`/api/v1/organizations/${targetOrg.id}/projects`);
         const list = res?.data ?? res;
         if (Array.isArray(list)) {
-          setProjects(list);
+          setProjects(list.filter((p: any) => p.status !== 'deleting'));
         }
       } catch (err) {
         console.error("Failed to load projects", err);

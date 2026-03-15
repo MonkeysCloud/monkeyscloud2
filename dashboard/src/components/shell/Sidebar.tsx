@@ -223,7 +223,7 @@ export function Sidebar() {
         const res = await api.get<any>(`/api/v1/organizations/${targetOrg.id}/projects`);
         const list = res?.data ?? res;
         if (Array.isArray(list)) {
-          setProjects(list);
+          setProjects(list.filter((p: any) => p.status !== 'deleting'));
           const projectSlugFromUrl = pathname.match(/\/projects\/([^/]+)/)?.[1];
           if (projectSlugFromUrl) {
             // URL has a project slug — only activate the matching project (no fallback)

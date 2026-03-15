@@ -27,5 +27,11 @@ GIT_SERVER_URL=${GIT_SERVER_URL:-http://git-server:3001}
 GIT_SERVER_PUBLIC_URL=${GIT_SERVER_PUBLIC_URL:-https://git.monkeys.cloud}
 EOF
 
-# Start FrankenPHP
+# If arguments were passed (e.g. via docker-compose command), run those instead
+# This allows the same image to act as a queue worker: command: ["php", "ml", "queue:work"]
+if [ $# -gt 0 ]; then
+  exec "$@"
+fi
+
+# Default: start FrankenPHP
 exec frankenphp run --config /etc/caddy/Caddyfile

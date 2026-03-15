@@ -3,35 +3,47 @@ declare(strict_types=1);
 
 namespace App\Job;
 
-use MonkeysLegion\Database\Contracts\ConnectionInterface;
-
 /**
  * Queue job that cascades-deletes every entity related to a project
  * in batches so the database is never overloaded.
  *
  * Consumed via: php ml queue:work --queue=default
+ *
+ * Note: The queue worker instantiates this class with the payload
+ * spread as constructor args: new DeleteProjectJob(projectId: X)
+ * So the constructor must match the payload keys exactly.
  */
 final class DeleteProjectJob
 {
     /** Rows deleted per batch to avoid locking the DB */
     private const BATCH_SIZE = 200;
 
-    public function __construct(private ConnectionInterface $db)
+    public function __construct(private int $projectId)
     {
     }
 
-    /**
-     * @param array $payload {projectId: int}
-     */
-    public function handle(array $payload): void
+    public function handle(): void
     {
-        $projectId = (int) ($payload['projectId'] ?? 0);
-        if ($projectId === 0) {
+        if ($this->projectId === 0) {
             error_log('DELETE_PROJECT_JOB: missing projectId');
             return;
         }
 
-        $pdo = $this->db->pdo();
+        // Build a PDO connection from env vars (the worker process
+        // doesn't boot the full DI container)
+        $pdo = new \PDO(
+            sprintf(
+                'pgsql:host=%s;port=%s;dbname=%s',
+                getenv('DB_HOST') ?: 'postgres',
+                getenv('DB_PORT') ?: '5432',
+                getenv('DB_DATABASE') ?: 'monkeyscloud'
+            ),
+            getenv('DB_USERNAME') ?: getenv('DB_USER') ?: 'monkeyscloud',
+            getenv('DB_PASSWORD') ?: getenv('DB_PASS') ?: ''
+        );
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        $projectId = $this->projectId;
 
         error_log("DELETE_PROJECT_JOB: starting deletion of project #{$projectId}");
 

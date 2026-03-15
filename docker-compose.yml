@@ -145,6 +145,36 @@ services:
       retries: 3
       start_period: 15s
 
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: mc-queue-worker
+    restart: unless-stopped
+    command: ["php", "-d", "max_execution_time=0", "ml", "queue:work", "--queue=default", "--sleep=3", "--tries=3", "--memory=256"]
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_HOST: ${POSTGRES_HOST:-postgres}
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-monkeyscloud}
+      DB_USERNAME: ${POSTGRES_USER:-monkeyscloud}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-changeme-use-at-least-32-characters-of-randomness}
+    volumes:
+      - ./api:/app
+      - api-vendor:/app/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mc-net
+
   dashboard:
     build:
       context: .
