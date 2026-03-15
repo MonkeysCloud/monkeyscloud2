@@ -52,12 +52,37 @@ services:
       - DB_PASSWORD=monkeyscloud
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - SOCKET_SERVER_URL=http://socket-server:3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - monkeyscloud-network
     depends_on:
       - postgres
       - redis
       - rabbitmq
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: monkeyscloud-queue-worker
+    restart: unless-stopped
+    command: ["php", "-d", "max_execution_time=0", "ml", "queue:work", "--queue=default", "--sleep=3", "--tries=3", "--memory=256"]
+    environment:
+      - APP_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=monkeyscloud
+      - DB_USERNAME=monkeyscloud
+      - DB_PASSWORD=monkeyscloud
+    networks:
+      - monkeyscloud-network
+    depends_on:
+      - redis
+      - postgres
 
   socket-server:
     build:
