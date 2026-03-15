@@ -170,6 +170,48 @@ final class PlatformController
         ]);
     }
 
+    #[Route(methods: 'POST', path: '/api/v1/internal/validate-ssh-key', name: 'sshkeys.validate', summary: 'Validate SSH key (internal)', tags: ['Internal'])]
+    public function validateSshKey(ServerRequestInterface $request): Response
+    {
+        $body = json_decode((string) $request->getBody(), true) ?: [];
+        $publicKey = $body['public_key'] ?? '';
+
+        if ($publicKey === '') {
+            return $this->json(['valid' => false, 'error' => 'Public key required'], 400);
+        }
+
+        $parts = explode(' ', trim($publicKey));
+        if (count($parts) < 2) {
+            return $this->json(['valid' => false, 'error' => 'Invalid public key format'], 400);
+        }
+        // Match Type and Base64 Payload, ignoring the comment part
+        $searchType = $parts[0];
+        $searchPayload = $parts[1];
+
+        $allKeys = $this->sshKeyRepo->findAll();
+        $matchedKey = null;
+        foreach ($allKeys as $k) {
+            $kParts = explode(' ', trim($k->public_key));
+            if (count($kParts) >= 2 && $kParts[0] === $searchType && $kParts[1] === $searchPayload) {
+                $matchedKey = $k;
+                break;
+            }
+        }
+
+        if (!$matchedKey) {
+            return $this->json(['valid' => false, 'error' => 'Key not found'], 401);
+        }
+
+        $matchedKey->last_used_at = new \DateTimeImmutable();
+        $this->sshKeyRepo->save($matchedKey);
+
+        return $this->json([
+            'valid' => true,
+            'user_id' => $matchedKey->user_id,
+            'scopes' => ['read', 'write'], // SSH keys grant full Git access to authorized user
+        ]);
+    }
+
     // --- SSH Keys ---
 
     #[Route(methods: 'GET', path: '/api/v1/me/ssh-keys', name: 'sshkeys.mine', summary: 'List my SSH keys', tags: ['Settings'])]

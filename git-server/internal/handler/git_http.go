@@ -183,7 +183,7 @@ func (h *GitHTTP) ReceivePack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Pre-receive hook: validate branch protection, required reviewers, etc.
-	refUpdates := parseRefUpdates(body)
+	refUpdates := ParseRefUpdates(body)
 	if err := h.hookExec.PreReceive(r.Context(), org, project, refUpdates); err != nil {
 		// Reject the push
 		log.Warn().Err(err).Str("org", org).Str("project", project).Msg("Pre-receive hook rejected push")
@@ -209,9 +209,9 @@ func (h *GitHTTP) ReceivePack(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("org", org).Str("project", project).Int("refs", len(refUpdates)).Msg("Push received")
 }
 
-// parseRefUpdates extracts ref updates from the receive-pack payload.
+// ParseRefUpdates extracts ref updates from the receive-pack payload.
 // Format: <old-sha> <new-sha> <ref-name>
-func parseRefUpdates(body []byte) []hooks.RefUpdate {
+func ParseRefUpdates(body []byte) []hooks.RefUpdate {
 	var updates []hooks.RefUpdate
 	lines := strings.Split(string(body), "\n")
 	for _, line := range lines {

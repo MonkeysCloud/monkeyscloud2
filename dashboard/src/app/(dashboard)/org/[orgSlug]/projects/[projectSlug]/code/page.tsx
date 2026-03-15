@@ -184,7 +184,8 @@ export default function CodePage() {
   const projectSlug = params.projectSlug;
   const gitBaseUrl = process.env.NEXT_PUBLIC_GIT_URL || "http://localhost:3001";
   const cloneUrl = `${gitBaseUrl}/${params.orgSlug}/${projectSlug}.git`;
-  const sshCloneUrl = `git@${(gitBaseUrl.replace(/^https?:\/\//, ''))}:${params.orgSlug}/${projectSlug}.git`;
+  const sshHost = process.env.NEXT_PUBLIC_SSH_HOST || gitBaseUrl.replace(/^https?:\/\//, '');
+  const sshCloneUrl = `git@${sshHost}:${params.orgSlug}/${projectSlug}.git`;
 
   // Determine what we're viewing
   const isViewingFile = fileContent !== null;

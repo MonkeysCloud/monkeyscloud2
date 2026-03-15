@@ -99,3 +99,17 @@ spec:
       port: 50051
       targetPort: 50051
   type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-ssh
+  namespace: monkeyscloud
+spec:
+  selector:
+    app: git-server
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 2222
+  type: LoadBalancer

@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 
+	"github.com/gliderlabs/ssh"
 	gitgrpc "github.com/monkeyscloud/git-server/internal/grpc"
 	"github.com/monkeyscloud/git-server/internal/handler"
 	"github.com/monkeyscloud/git-server/internal/hooks"
@@ -38,6 +39,7 @@ func main() {
 	// Config
 	httpPort := getEnv("GIT_HTTP_PORT", "3001")
 	grpcPort := getEnv("GIT_GRPC_PORT", "50051")
+	sshPort := getEnv("GIT_SSH_PORT", "2222")
 	reposPath := getEnv("GIT_REPOS_PATH", "/var/lib/git")
 	platformAPIURL := getEnv("PLATFORM_API_URL", "http://api:8000")
 	redisAddr := fmt.Sprintf("%s:%s", getEnv("REDIS_HOST", "redis"), getEnv("REDIS_PORT", "6379"))
@@ -139,6 +141,16 @@ func main() {
 	}
 
 	// =========================================================================
+	// SSH Server — Git Smart Protocol over SSH
+	// =========================================================================
+	gitSSHHandler := handler.NewGitSSH(repoMgr, hookExec)
+	sshServer := &ssh.Server{
+		Addr:             ":" + sshPort,
+		Handler:          gitSSHHandler.SessionHandler,
+		PublicKeyHandler: gitSSHHandler.PublicKeyHandler,
+	}
+
+	// =========================================================================
 	// gRPC Server — Platform API Communication
 	// =========================================================================
 	grpcServer := grpc.NewServer()
@@ -171,6 +183,14 @@ func main() {
 		}
 	}()
 
+	// Start SSH
+	go func() {
+		log.Info().Str("port", sshPort).Msg("Git SSH server starting")
+		if err := sshServer.ListenAndServe(); err != nil && err != ssh.ErrServerClosed {
+			errChan <- fmt.Errorf("ssh server error: %w", err)
+		}
+	}()
+
 	// =========================================================================
 	// Graceful Shutdown
 	// =========================================================================
@@ -188,6 +208,9 @@ func main() {
 	defer cancel()
 
 	grpcServer.GracefulStop()
+	if err := sshServer.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("SSH shutdown error")
+	}
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Msg("HTTP shutdown error")
 	}
