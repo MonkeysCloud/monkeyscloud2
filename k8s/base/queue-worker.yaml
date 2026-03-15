@@ -25,7 +25,7 @@ spec:
       containers:
         - name: queue-worker
           image: REGION-docker.pkg.dev/PROJECT/mc-platform/api:latest
-          command: ["php", "ml", "queue:work", "--queue=default", "--sleep=3", "--tries=3", "--memory=256"]
+          command: ["php", "-d", "max_execution_time=0", "ml", "queue:work", "--queue=default", "--sleep=3", "--tries=3", "--memory=256"]
           envFrom:
             - configMapRef:
                 name: api-config
