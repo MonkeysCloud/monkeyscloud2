@@ -39,7 +39,7 @@ func main() {
 	// Config
 	httpPort := getEnv("GIT_HTTP_PORT", "3001")
 	grpcPort := getEnv("GIT_GRPC_PORT", "50051")
-	sshPort := getEnv("GIT_SSH_PORT", "2222")
+	sshPort := getEnv("GIT_SERVER_SSH_PORT", "2222")
 	reposPath := getEnv("GIT_REPOS_PATH", "/var/lib/git")
 	platformAPIURL := getEnv("PLATFORM_API_URL", "http://api:8000")
 	redisAddr := fmt.Sprintf("%s:%s", getEnv("REDIS_HOST", "redis"), getEnv("REDIS_PORT", "6379"))

@@ -109,6 +109,9 @@ spec:
   selector:
     app: git-server
   ports:
+    - name: http
+      port: 80
+      targetPort: 3001
     - name: ssh
       port: 22
       targetPort: 2222

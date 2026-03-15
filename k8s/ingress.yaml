@@ -39,16 +39,6 @@ spec:
                 name: socket-server
                 port:
                   number: 80
-    - host: git.monkeys.cloud
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: git-server
-                port:
-                  number: 80
 ---
 apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
