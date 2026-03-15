@@ -16,7 +16,7 @@ data:
   DB_HOST: ""        # Injected by Terraform output (Cloud SQL private IP)
   DB_PORT: "5432"
   DB_DATABASE: "monkeyscloud"
-  REDIS_HOST: ""     # Injected by Terraform output (Memorystore IP)
+  REDIS_HOST: "redis.monkeyscloud.svc.cluster.local"     # Redis runs in monkeyscloud namespace
   REDIS_PORT: "6379"
   MAIL_HOST: "smtp.mailgun.org"
   MAIL_PORT: "587"
