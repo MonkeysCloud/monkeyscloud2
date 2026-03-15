@@ -29,6 +29,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -881,8 +882,8 @@ export default function CodePage() {
               </div>
             ) : fileIsMarkdown && viewMode === "code" ? (
               /* Markdown Rendered */
-              <div className="p-6 prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-surface-300 prose-a:text-brand-400 prose-strong:text-white prose-code:text-brand-300 prose-code:bg-surface-700/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-surface-900 prose-pre:border prose-pre:border-surface-700">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <div className="p-6 prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-surface-300 prose-a:text-brand-400 prose-strong:text-white prose-code:text-brand-300 prose-code:bg-surface-700/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:bg-surface-900 prose-pre:border prose-pre:border-surface-700 prose-pre:text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                   {fileContent || ""}
                 </ReactMarkdown>
               </div>
@@ -1003,8 +1004,8 @@ export default function CodePage() {
                 <FileText className="h-4 w-4 text-surface-400" />
                 <span className="text-sm font-medium text-white">README.md</span>
               </div>
-              <div className="p-6 prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-surface-300 prose-a:text-brand-400 prose-strong:text-white prose-code:text-brand-300 prose-code:bg-surface-700/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-surface-900 prose-pre:border prose-pre:border-surface-700 prose-img:rounded-lg">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <div className="p-6 prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-surface-300 prose-a:text-brand-400 prose-strong:text-white prose-code:text-brand-300 prose-code:bg-surface-700/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:bg-surface-900 prose-pre:border prose-pre:border-surface-700 prose-pre:text-sm prose-img:rounded-lg">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                   {readmeContent}
                 </ReactMarkdown>
               </div>
