@@ -5,7 +5,10 @@ import { Button, Card, Badge, EmptyState } from "@/components/ui";
 import { 
   FolderKanban, Plus, Loader2, Cpu, Database, FileText, 
   Triangle, Atom, TerminalSquare, Hexagon, Cog, Container, 
-  FileJson, Beaker, Zap, Gem, Droplet, Box
+  FileJson, Beaker, Zap, Gem, Droplets, Box,
+  Banana, PenLine, FileCode, Leaf, Flame, Sparkles,
+  Terminal, Component, Compass, Bolt, FlaskConical, BarChart3,
+  Circle, Coffee, Layers
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
@@ -13,22 +16,57 @@ import { api } from "@/lib/api";
 
 const getStackIcon = (stack: string) => {
   const stackIcons: Record<string, React.ReactNode> = {
-    monkeyslegion: <Cpu className="h-6 w-6 text-primary-400" />, 
-    laravel: <Database className="h-6 w-6 text-red-500" />, 
-    wordpress: <FileText className="h-6 w-6 text-blue-400" />, 
-    nextjs: <Triangle className="h-6 w-6 text-white" />,
-    react: <Atom className="h-6 w-6 text-cyan-400" />, 
-    vue: <Triangle className="h-6 w-6 text-emerald-500 rotate-180" />, 
-    django: <TerminalSquare className="h-6 w-6 text-green-700" />, 
-    go: <Hexagon className="h-6 w-6 text-cyan-500" />, 
+    // PHP
+    monkeyslegion: <Banana className="h-6 w-6 text-yellow-500" />,
+    laravel: <Triangle className="h-6 w-6 text-red-500" />,
+    symfony: <Hexagon className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />,
+    wordpress: <PenLine className="h-6 w-6 text-blue-500" />,
+    drupal: <Droplets className="h-6 w-6 text-blue-600" />,
+    "php-generic": <FileCode className="h-6 w-6 text-purple-500" />,
+    
+    // JS/TS
+    nextjs: <Hexagon className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />,
+    nuxtjs: <Leaf className="h-6 w-6 text-emerald-500" />,
+    remix: <Zap className="h-6 w-6 text-indigo-500" />,
+    sveltekit: <Flame className="h-6 w-6 text-orange-500" />,
+    astro: <Sparkles className="h-6 w-6 text-orange-400" />,
+    express: <Terminal className="h-6 w-6 text-green-500" />,
+    nestjs: <Component className="h-6 w-6 text-red-600" />,
+    react: <Atom className="h-6 w-6 text-cyan-400" />,
+    vue: <Component className="h-6 w-6 text-emerald-500" />,
+    angular: <Triangle className="h-6 w-6 text-red-600" />,
+    
+    // Python
+    django: <Compass className="h-6 w-6 text-emerald-700" />,
+    fastapi: <Bolt className="h-6 w-6 text-teal-500" />,
+    flask: <FlaskConical className="h-6 w-6 text-zinc-900 dark:text-zinc-100" />,
+    streamlit: <BarChart3 className="h-6 w-6 text-red-500" />,
+    "python-generic": <FileCode className="h-6 w-6 text-yellow-500" />,
+    
+    // Ruby
+    rails: <Gem className="h-6 w-6 text-red-600" />,
+    "ruby-generic": <Gem className="h-6 w-6 text-red-500" />,
+    
+    // Go
+    go: <Circle className="h-6 w-6 text-cyan-500" />,
+    
+    // Rust
     rust: <Cog className="h-6 w-6 text-orange-600" />,
-    docker: <Container className="h-6 w-6 text-blue-500" />, 
-    static: <FileJson className="h-6 w-6 text-zinc-400" />, 
-    nuxtjs: <Triangle className="h-6 w-6 text-emerald-400" />, 
-    flask: <Beaker className="h-6 w-6 text-surface-300" />,
-    fastapi: <Zap className="h-6 w-6 text-emerald-400" />, 
-    rails: <Gem className="h-6 w-6 text-red-600" />, 
-    drupal: <Droplet className="h-6 w-6 text-blue-600" />,
+    
+    // Java
+    "spring-boot": <Leaf className="h-6 w-6 text-green-500" />,
+    "java-generic": <Coffee className="h-6 w-6 text-orange-500" />,
+    
+    // .NET
+    dotnet: <Layers className="h-6 w-6 text-purple-600" />,
+    
+    // Elixir
+    phoenix: <Flame className="h-6 w-6 text-orange-500" />,
+    
+    // Static & Docker
+    static: <FileCode className="h-6 w-6 text-zinc-400" />,
+    docker: <Container className="h-6 w-6 text-blue-500" />,
+    "docker-compose": <Container className="h-6 w-6 text-blue-500" />,
   };
   return stackIcons[stack.toLowerCase()] || <Box className="h-6 w-6 text-surface-400" />;
 };
