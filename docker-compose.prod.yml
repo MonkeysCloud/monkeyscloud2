@@ -40,7 +40,7 @@ services:
       - .:/var/www
     environment:
       - APP_ENV=production
-      - GIT_SERVER_URL=http://git-server:8080
+      - GIT_SERVER_URL=http://git-server:3001
       - GIT_SERVER_PUBLIC_URL=https://git.monkeys.cloud
       - REDIS_URL=redis://redis:6379
       - POSTGRES_URL=postgres://monkeyscloud:monkeyscloud@postgres:5432/monkeyscloud
