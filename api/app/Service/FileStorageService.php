@@ -187,7 +187,7 @@ final class FileStorageService
             return $cached;
         }
 
-        $url = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
+        $url = 'http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token';
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -196,10 +196,12 @@ final class FileStorageService
         ]);
         $body = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
         curl_close($ch);
 
-        if ($httpCode !== 200 || !$body) {
-            throw new \RuntimeException('Failed to get GCS access token from metadata server');
+        if ($body === false || $httpCode !== 200) {
+            $msg = is_string($body) ? $body : '';
+            throw new \RuntimeException("Failed to get GCS access token from metadata server. HTTP {$httpCode}, cURL: {$curlErr}, Body: {$msg}");
         }
 
         $data = json_decode($body, true);
@@ -244,7 +246,7 @@ final class FileStorageService
 
     private function hasMetadataServer(): bool
     {
-        $ch = curl_init('http://metadata.google.internal/');
+        $ch = curl_init('http://169.254.169.254/');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 1,
