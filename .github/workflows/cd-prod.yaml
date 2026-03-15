@@ -14,6 +14,7 @@ on:
           - dashboard
           - socket-server
           - git-server
+          - queue-worker
 
 env:
   PROJECT_ID: monkeyscloud2
@@ -29,7 +30,7 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        service: [api, dashboard, socket-server, git-server]
+        service: [api, dashboard, socket-server, git-server, queue-worker]
     steps:
       - uses: actions/checkout@v5
 
@@ -62,6 +63,10 @@ jobs:
               ;;
             git-server)
               echo "dockerfile=docker/git-server/Dockerfile" >> $GITHUB_OUTPUT
+              echo "context=." >> $GITHUB_OUTPUT
+              ;;
+            queue-worker)
+              echo "dockerfile=docker/api/Dockerfile" >> $GITHUB_OUTPUT
               echo "context=." >> $GITHUB_OUTPUT
               ;;
           esac
