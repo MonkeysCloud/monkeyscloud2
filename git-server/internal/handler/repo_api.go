@@ -43,35 +43,18 @@ func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 		// Try Docker scaffold first
 		err = h.repoMgr.ScaffoldProject(req.Org, req.Project, req.DockerImage, req.ScaffoldCommand, req.Gitignore)
 		if err != nil {
-			log.Warn().Err(err).Msg("Docker scaffold failed, falling back to built-in seed")
-			// Fall back to built-in seed files (no Docker needed)
+			// Docker not available (e.g. GKE) — fall back to templates repo
 			stack := req.Stack
 			if stack == "" {
-				// Infer stack from docker image name
 				stack = inferStack(req.DockerImage)
 			}
-			files := repository.StackFiles(req.Org, req.Project, stack)
-			if len(files) > 1 { // more than just README
-				repoPath := h.repoMgr.RepoPath(req.Org, req.Project)
-				err = h.repoMgr.SeedInitialCommit(repoPath, files)
-			}
-			// If no matching stack files, leave repo empty
+			log.Warn().Err(err).Str("stack", stack).Msg("Docker scaffold failed, falling back to template repo")
+			// Use the admin-managed _system/templates.git repo
+			err = h.repoMgr.InitBareWithStack(req.Org, req.Project, stack)
 		}
 	} else if req.Stack != "" {
-		// Legacy path: use template branches
+		// Use template branches from _system/templates.git
 		err = h.repoMgr.InitBareWithStack(req.Org, req.Project, req.Stack)
-		// If template not found, try seed files
-		if err == nil {
-			repoPath := h.repoMgr.RepoPath(req.Org, req.Project)
-			// Check if repo has any refs
-			hasRefs := h.repoMgr.HasRefs(req.Org, req.Project)
-			if !hasRefs {
-				files := repository.StackFiles(req.Org, req.Project, req.Stack)
-				if len(files) > 0 {
-					h.repoMgr.SeedInitialCommit(repoPath, files)
-				}
-			}
-		}
 	} else {
 		err = h.repoMgr.InitBare(req.Org, req.Project)
 	}
