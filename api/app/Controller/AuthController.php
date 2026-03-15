@@ -21,6 +21,7 @@ use App\Entity\OrganizationMember;
 use App\Repository\UserRepository;
 use App\Repository\OrganizationRepository;
 use App\Repository\OrganizationMemberRepository;
+use App\Service\FileStorageService;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -34,6 +35,7 @@ final class AuthController
         private UserRepository $userRepo,
         private OrganizationRepository $orgRepo,
         private OrganizationMemberRepository $memberRepo,
+        private FileStorageService $fileStorage,
     ) {
     }
 
@@ -335,12 +337,14 @@ final class AuthController
                 }
                 $tmpPath = $raw['tmp_name'];
                 $originalName = $raw['name'] ?? 'avatar.jpg';
+                $mime = $raw['type'] ?? 'image/jpeg';
             } else {
                 if ($raw->getError() !== UPLOAD_ERR_OK) {
                     return $this->json(['error' => 'Upload failed'], 422);
                 }
                 $tmpPath = $raw->getStream()->getMetadata('uri');
                 $originalName = $raw->getClientFilename() ?? 'avatar.jpg';
+                $mime = $raw->getClientMediaType() ?? 'image/jpeg';
             }
 
             // Validate extension
@@ -349,27 +353,16 @@ final class AuthController
                 return $this->json(['error' => 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp'], 422);
             }
 
-            $dir = '/app/public/files/avatars';
-            if (!is_dir($dir)) {
-                mkdir($dir, 0775, true);
-            }
-
             // Delete old avatar if exists
             if ($user->avatar_url) {
-                $oldPath = '/app/public' . $user->avatar_url;
-                if (file_exists($oldPath)) {
-                    unlink($oldPath);
-                }
+                $this->fileStorage->delete($user->avatar_url);
             }
 
-            $filename = 'user_' . $user->id . '_' . time() . '.' . $ext;
-            $filePath = $dir . '/' . $filename;
+            // Upload to cloud storage (or local fallback)
+            $objectPath = 'avatars/user_' . $user->id . '_' . time() . '.' . $ext;
+            $avatarUrl = $this->fileStorage->upload($objectPath, $tmpPath, $mime);
 
-            if (!move_uploaded_file($tmpPath, $filePath) && !rename($tmpPath, $filePath)) {
-                return $this->json(['error' => 'Failed to save avatar'], 500);
-            }
-
-            $user->avatar_url = '/files/avatars/' . $filename;
+            $user->avatar_url = $avatarUrl;
             $user->updated_at = new \DateTimeImmutable();
             $this->userRepo->save($user);
 

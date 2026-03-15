@@ -9,6 +9,7 @@ use MonkeysLegion\Http\Message\Stream;
 use MonkeysLegion\Router\Attributes\Middleware;
 use App\Repository\AttachmentRepository;
 use App\Entity\Attachment;
+use App\Service\FileStorageService;
 use Psr\Http\Message\ServerRequestInterface;
 
 #[Middleware('auth')]
@@ -38,11 +39,10 @@ final class AttachmentController extends AbstractController
     ];
 
     private const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
-    private const UPLOAD_DIR = '/app/public/files/attachments';
-    private const PUBLIC_PATH = '/files/attachments';
 
     public function __construct(
         private AttachmentRepository $attachmentRepo,
+        private FileStorageService $fileStorage,
     ) {
     }
 
@@ -103,12 +103,6 @@ final class AttachmentController extends AbstractController
                 return $this->json(['error' => 'No files uploaded.'], 422);
             }
 
-            // Prepare storage directory
-            $dir = self::UPLOAD_DIR . "/{$entityType}/{$entityId}";
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
-            }
-
             $saved = [];
             $sortOrder = 0;
 
@@ -135,19 +129,17 @@ final class AttachmentController extends AbstractController
                 // Generate safe filename
                 $ext = pathinfo($originalName, PATHINFO_EXTENSION);
                 $safeName = bin2hex(random_bytes(16)) . ($ext ? ".{$ext}" : '');
-                $filePath = "{$dir}/{$safeName}";
-                $publicPath = self::PUBLIC_PATH . "/{$entityType}/{$entityId}/{$safeName}";
-                // Build URL from the incoming request host (includes port, e.g. localhost:8000)
-                $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                $fileUrl = $scheme . '://' . $host . $publicPath;
+                $objectPath = "attachments/{$entityType}/{$entityId}/{$safeName}";
 
-                // Move file
+                // Save temp file if PSR-7 object
                 if (isset($f['_psr7'])) {
-                    $f['_psr7']->moveTo($filePath);
-                } else {
-                    move_uploaded_file($tmpName, $filePath);
+                    $tmpFile = tempnam(sys_get_temp_dir(), 'att_');
+                    $f['_psr7']->moveTo($tmpFile);
+                    $tmpName = $tmpFile;
                 }
+
+                // Upload to cloud storage (or local fallback)
+                $fileUrl = $this->fileStorage->upload($objectPath, $tmpName, $mime);
 
                 // Create Attachment entity
                 $attachment = new Attachment();
@@ -155,7 +147,7 @@ final class AttachmentController extends AbstractController
                 $attachment->entity_id = (int) $entityId;
                 $attachment->uploaded_by = (int) $userId;
                 $attachment->file_name = $originalName;
-                $attachment->file_path = $filePath;
+                $attachment->file_path = $objectPath;
                 $attachment->file_url = $fileUrl;
                 $attachment->file_size = $size;
                 $attachment->mime_type = $mime;
@@ -216,10 +208,8 @@ final class AttachmentController extends AbstractController
             return $this->json(['error' => 'Forbidden.'], 403);
         }
 
-        // Delete file from disk
-        if (file_exists($attachment->file_path)) {
-            unlink($attachment->file_path);
-        }
+        // Delete file from cloud storage (or local fallback)
+        $this->fileStorage->delete($attachment->file_url);
 
         // Delete DB record
         $this->attachmentRepo->delete($attachment);
@@ -234,18 +224,17 @@ final class AttachmentController extends AbstractController
     public function download(ServerRequestInterface $request, int $id): Response
     {
         $attachment = $this->attachmentRepo->find($id);
-        if (!$attachment || !file_exists($attachment->file_path)) {
+        if (!$attachment) {
             return $this->json(['error' => 'File not found.'], 404);
         }
 
-        $stream = new Stream(fopen($attachment->file_path, 'rb'));
+        // Redirect to the cloud storage URL (or local path)
+        $url = $attachment->file_url;
         return new Response(
-            $stream,
-            200,
+            Stream::createFromString(''),
+            302,
             [
-                'Content-Type' => $attachment->mime_type ?: 'application/octet-stream',
-                'Content-Disposition' => 'attachment; filename="' . addslashes($attachment->file_name) . '"',
-                'Content-Length' => (string) filesize($attachment->file_path),
+                'Location' => $url,
                 'Access-Control-Allow-Origin' => '*',
             ]
         );

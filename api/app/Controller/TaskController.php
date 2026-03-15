@@ -12,6 +12,7 @@ use App\Repository\TaskCommentRepository;
 use App\Repository\TimeEntryRepository;
 use App\Repository\TaskLabelRepository;
 use App\Repository\AttachmentRepository;
+use App\Service\FileStorageService;
 use Psr\Http\Message\ServerRequestInterface;
 
 final class TaskController extends AbstractController
@@ -24,6 +25,7 @@ final class TaskController extends AbstractController
         private TimeEntryRepository $timeRepo,
         private TaskLabelRepository $labelRepo,
         private AttachmentRepository $attachmentRepo,
+        private FileStorageService $fileStorage,
     ) {
     }
 
@@ -1172,7 +1174,6 @@ final class TaskController extends AbstractController
             $tmpPath = null;
 
             if (is_array($raw) && isset($raw['tmp_name'])) {
-                // Raw $_FILES array
                 if ($raw['error'] !== UPLOAD_ERR_OK)
                     return $this->json(['error' => 'File upload failed (error code: ' . $raw['error'] . ')'], 422);
                 $origName = $raw['name'] ?? 'unnamed';
@@ -1180,43 +1181,32 @@ final class TaskController extends AbstractController
                 $mimeType = $raw['type'] ?? 'application/octet-stream';
                 $tmpPath = $raw['tmp_name'];
             } elseif (is_object($raw) && method_exists($raw, 'getError')) {
-                // PSR-7 UploadedFileInterface
                 if ($raw->getError() !== UPLOAD_ERR_OK)
                     return $this->json(['error' => 'File upload failed.'], 422);
                 $origName = $raw->getClientFilename() ?? 'unnamed';
                 $fileSize = $raw->getSize() ?? 0;
                 $mimeType = $raw->getClientMediaType() ?? 'application/octet-stream';
-                $tmpPath = null; // will use moveTo
+                // Save to temp file for upload
+                $tmpPath = tempnam(sys_get_temp_dir(), 'att_');
+                $raw->moveTo($tmpPath);
             } else {
                 return $this->json(['error' => 'No file provided.'], 422);
             }
 
             $ext = pathinfo($origName, PATHINFO_EXTENSION);
             $safeName = time() . '_' . bin2hex(random_bytes(8)) . ($ext ? '.' . $ext : '');
+            $objectPath = "attachments/task/{$taskId}/{$safeName}";
 
-            $uploadDir = '/app/storage/attachments/' . $taskId;
-            if (!is_dir($uploadDir))
-                mkdir($uploadDir, 0775, true);
-
-            $filePath = $uploadDir . '/' . $safeName;
-
-            if ($tmpPath) {
-                // Raw file: move from temp
-                if (!move_uploaded_file($tmpPath, $filePath) && !rename($tmpPath, $filePath)) {
-                    return $this->json(['error' => 'Failed to move uploaded file.'], 500);
-                }
-            } else {
-                // PSR-7: use moveTo
-                $raw->moveTo($filePath);
-            }
+            // Upload to cloud storage (or local fallback)
+            $fileUrl = $this->fileStorage->upload($objectPath, $tmpPath, $mimeType);
 
             $attachment = new \App\Entity\Attachment();
             $attachment->entity_type = 'task';
             $attachment->entity_id = $taskId;
             $attachment->uploaded_by = (int) $userId;
             $attachment->file_name = $origName;
-            $attachment->file_path = $filePath;
-            $attachment->file_url = '/storage/attachments/' . $taskId . '/' . $safeName;
+            $attachment->file_path = $objectPath;
+            $attachment->file_url = $fileUrl;
             $attachment->file_size = $fileSize;
             $attachment->mime_type = $mimeType;
             $attachment->created_at = new \DateTimeImmutable();
@@ -1241,10 +1231,8 @@ final class TaskController extends AbstractController
             if (!$attachment)
                 return $this->json(['error' => 'Attachment not found.'], 404);
 
-            // Delete file from disk
-            if (file_exists($attachment->file_path)) {
-                unlink($attachment->file_path);
-            }
+            // Delete file from cloud storage (or local fallback)
+            $this->fileStorage->delete($attachment->file_url);
 
             $this->attachmentRepo->delete($attachment);
             return $this->json(['message' => 'Attachment deleted.']);
@@ -1261,43 +1249,17 @@ final class TaskController extends AbstractController
     #[Route(methods: 'GET', path: '/storage/attachments/{taskId}/{filename}', name: 'storage.serve', summary: 'Serve storage files')]
     public function serveStorageFile(ServerRequestInterface $request, int $taskId, string $filename): Response
     {
-        // Sanitize filename to prevent path traversal
-        $filename = basename($filename);
-        $filePath = '/app/storage/attachments/' . $taskId . '/' . $filename;
+        // Redirect to cloud storage URL
+        $objectPath = "attachments/task/{$taskId}/{$filename}";
+        $url = $this->fileStorage->url($objectPath);
 
-        if (!is_file($filePath)) {
-            return $this->json(['error' => 'File not found.'], 404);
-        }
-
-        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-        $mimeTypes = [
-            'png' => 'image/png',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'gif' => 'image/gif',
-            'webp' => 'image/webp',
-            'svg' => 'image/svg+xml',
-            'pdf' => 'application/pdf',
-            'zip' => 'application/zip',
-            'txt' => 'text/plain',
-            'csv' => 'text/csv',
-            'json' => 'application/json',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'xls' => 'application/vnd.ms-excel',
-            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ];
-        $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
-
-        $content = file_get_contents($filePath);
-        $body = \MonkeysLegion\Http\Message\Stream::createFromString($content);
-        return new Response($body, 200, [
-            'Content-Type' => $contentType,
-            'Content-Length' => (string) strlen($content),
-            'Cache-Control' => 'public, max-age=86400',
-            'Access-Control-Allow-Origin' => '*',
-            'Access-Control-Allow-Methods' => 'GET, OPTIONS',
-            'Access-Control-Allow-Headers' => 'Authorization, Content-Type',
-        ]);
+        return new Response(
+            \MonkeysLegion\Http\Message\Stream::createFromString(''),
+            302,
+            [
+                'Location' => $url,
+                'Access-Control-Allow-Origin' => '*',
+            ]
+        );
     }
 }
