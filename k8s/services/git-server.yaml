@@ -15,6 +15,7 @@ spec:
       labels:
         app: git-server
     spec:
+      serviceAccountName: git-server
       containers:
         - name: git-server
           image: IMAGE_PLACEHOLDER

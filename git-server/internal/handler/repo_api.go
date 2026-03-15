@@ -40,17 +40,24 @@ func (h *RepoAPI) Create(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	if req.DockerImage != "" && req.ScaffoldCommand != "" {
-		// Try Docker scaffold first
+		// Try Docker scaffold first (works in local dev with Docker socket)
 		err = h.repoMgr.ScaffoldProject(req.Org, req.Project, req.DockerImage, req.ScaffoldCommand, req.Gitignore)
 		if err != nil {
-			// Docker not available (e.g. GKE) — fall back to templates repo
-			stack := req.Stack
-			if stack == "" {
-				stack = inferStack(req.DockerImage)
+			// Docker not available — try K8s Job (works in GKE)
+			log.Warn().Err(err).Msg("Docker scaffold failed, trying K8s Job")
+			k8sErr := h.repoMgr.ScaffoldViaK8sJob(req.Org, req.Project, req.DockerImage, req.ScaffoldCommand, req.Gitignore)
+			if k8sErr != nil {
+				// K8s Job also failed — fall back to templates repo
+				stack := req.Stack
+				if stack == "" {
+					stack = inferStack(req.DockerImage)
+				}
+				log.Warn().Err(k8sErr).Str("stack", stack).Msg("K8s Job scaffold failed, falling back to template repo")
+				// Repo was already created by ScaffoldProject, just seed from template
+				err = h.repoMgr.InitBareWithStack(req.Org, req.Project, stack)
+			} else {
+				err = nil // K8s Job succeeded
 			}
-			log.Warn().Err(err).Str("stack", stack).Msg("Docker scaffold failed, falling back to template repo")
-			// Use the admin-managed _system/templates.git repo
-			err = h.repoMgr.InitBareWithStack(req.Org, req.Project, stack)
 		}
 	} else if req.Stack != "" {
 		// Use template branches from _system/templates.git
