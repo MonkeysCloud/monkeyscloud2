@@ -655,11 +655,11 @@ export default function CodePage() {
                     </button>
                   </div>
                   <p className="text-[10px] text-surface-500">
-                    <code className="bg-surface-700 px-1 rounded">git clone {cloneTab === "https" ? cloneUrl : sshCloneUrl}</code>
+                    <code className="bg-surface-700 px-1 rounded">git clone {cloneTab === "https" ? `https://x-token-auth:YOUR_TOKEN@${gitBaseUrl.replace(/^https?:\/\//, '')}/${params.orgSlug}/${projectSlug}.git` : sshCloneUrl}</code>
                   </p>
                   {cloneTab === "https" && (
                     <p className="text-[10px] text-surface-500">
-                      Use your <a href="/account/api-keys" className="text-brand-400 hover:underline">API key</a> as password when prompted.
+                      Replace <code className="bg-surface-700 px-1 rounded">YOUR_TOKEN</code> with your <a href="/account/api-keys" className="text-brand-400 hover:underline">API key</a>.
                     </p>
                   )}
                 </div>

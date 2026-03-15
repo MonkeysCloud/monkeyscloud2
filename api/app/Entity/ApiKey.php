@@ -8,7 +8,7 @@ use MonkeysLegion\Entity\Attributes\Field;
 use MonkeysLegion\Entity\Attributes\ManyToOne;
 
 #[Entity(table: 'api_keys')]
-class ApiKey
+class ApiKey implements \JsonSerializable
 {
     #[Field(type: 'integer', autoIncrement: true, primaryKey: true)]
     public int $id;
@@ -39,4 +39,17 @@ class ApiKey
 
     #[ManyToOne(targetEntity: User::class)]
     public ?User $user = null;
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'key_id' => $this->key_id,
+            'scopes' => $this->scopes,
+            'last_used_at' => $this->last_used_at?->format('c'),
+            'expires_at' => $this->expires_at?->format('c'),
+            'created_at' => $this->created_at->format('c'),
+        ];
+    }
 }
