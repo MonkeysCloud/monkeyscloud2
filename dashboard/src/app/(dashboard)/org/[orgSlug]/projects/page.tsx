@@ -2,16 +2,35 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, Badge, EmptyState } from "@/components/ui";
-import { FolderKanban, Plus, Loader2 } from "lucide-react";
+import { 
+  FolderKanban, Plus, Loader2, Cpu, Database, FileText, 
+  Triangle, Atom, TerminalSquare, Hexagon, Cog, Container, 
+  FileJson, Beaker, Zap, Gem, Droplet, Box
+} from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
 import { api } from "@/lib/api";
 
-const stackIcons: Record<string, string> = {
-  monkeyslegion: "🐒", laravel: "🔴", wordpress: "📝", nextjs: "▲",
-  react: "⚛️", vue: "💚", django: "🐍", go: "🔵", rust: "🦀",
-  docker: "🐳", static: "📄", nuxtjs: "💚", flask: "🧪",
-  fastapi: "⚡", rails: "💎", drupal: "💧",
+const getStackIcon = (stack: string) => {
+  const stackIcons: Record<string, React.ReactNode> = {
+    monkeyslegion: <Cpu className="h-6 w-6 text-primary-400" />, 
+    laravel: <Database className="h-6 w-6 text-red-500" />, 
+    wordpress: <FileText className="h-6 w-6 text-blue-400" />, 
+    nextjs: <Triangle className="h-6 w-6 text-white" />,
+    react: <Atom className="h-6 w-6 text-cyan-400" />, 
+    vue: <Triangle className="h-6 w-6 text-emerald-500 rotate-180" />, 
+    django: <TerminalSquare className="h-6 w-6 text-green-700" />, 
+    go: <Hexagon className="h-6 w-6 text-cyan-500" />, 
+    rust: <Cog className="h-6 w-6 text-orange-600" />,
+    docker: <Container className="h-6 w-6 text-blue-500" />, 
+    static: <FileJson className="h-6 w-6 text-zinc-400" />, 
+    nuxtjs: <Triangle className="h-6 w-6 text-emerald-400" />, 
+    flask: <Beaker className="h-6 w-6 text-surface-300" />,
+    fastapi: <Zap className="h-6 w-6 text-emerald-400" />, 
+    rails: <Gem className="h-6 w-6 text-red-600" />, 
+    drupal: <Droplet className="h-6 w-6 text-blue-600" />,
+  };
+  return stackIcons[stack.toLowerCase()] || <Box className="h-6 w-6 text-surface-400" />;
 };
 
 interface ProjectItem {
@@ -90,8 +109,10 @@ export default function ProjectsPage() {
             <Link key={project.id} href={`${orgBase}/projects/${project.slug}`}>
               <Card hover className="h-full">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl">{stackIcons[project.stack] ?? "📦"}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-md bg-surface-800/50 border border-surface-700">
+                      {getStackIcon(project.stack)}
+                    </div>
                     <div>
                       <h3 className="text-base font-semibold text-white">{project.name}</h3>
                       <p className="text-xs text-surface-500">{project.slug}</p>
