@@ -74,9 +74,6 @@ class Organization
     #[OneToMany(targetEntity: Invitation::class, mappedBy: 'organization_id')]
     public array $invitations = [];
 
-    #[OneToMany(targetEntity: ApiKey::class, mappedBy: 'organization_id')]
-    public array $apiKeys = [];
-
     #[OneToMany(targetEntity: UsageRecord::class, mappedBy: 'organization_id')]
     public array $usageRecords = [];
 
