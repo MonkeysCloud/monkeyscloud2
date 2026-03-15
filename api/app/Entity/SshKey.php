@@ -8,7 +8,7 @@ use MonkeysLegion\Entity\Attributes\Field;
 use MonkeysLegion\Entity\Attributes\ManyToOne;
 
 #[Entity(table: 'ssh_keys')]
-class SshKey
+class SshKey implements \JsonSerializable
 {
     #[Field(type: 'integer', autoIncrement: true, primaryKey: true)]
     public int $id;
@@ -33,4 +33,15 @@ class SshKey
 
     #[ManyToOne(targetEntity: User::class)]
     public ?User $user = null;
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'fingerprint' => $this->fingerprint,
+            'last_used_at' => $this->last_used_at?->format('c'),
+            'created_at' => $this->created_at->format('c'),
+        ];
+    }
 }
