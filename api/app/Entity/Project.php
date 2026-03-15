@@ -114,7 +114,7 @@ class Project
     #[Field(type: 'integer', default: 0)]
     public int $task_counter = 0;
 
-    #[Field(type: 'enum', enumValues: ['active', 'paused', 'archived'], default: 'active')]
+    #[Field(type: 'enum', enumValues: ['active', 'paused', 'archived', 'deleting'], default: 'active')]
     public string $status = 'active';
 
     #[Field(type: 'datetime')]

@@ -14,4 +14,21 @@ return [
             $c->get(\MonkeysLegion\Session\SessionManager::class)
         );
     },
+
+    // Queue infrastructure
+    \MonkeysLegion\Queue\Factory\QueueFactory::class => static function ($c) {
+        $config = require ML_BASE_PATH . '/config/queue.php';
+        $conn = $c->get(\MonkeysLegion\Database\Contracts\ConnectionInterface::class);
+        return new \MonkeysLegion\Queue\Factory\QueueFactory($config, $conn);
+    },
+
+    \MonkeysLegion\Queue\Contracts\QueueInterface::class => static function ($c) {
+        return $c->get(\MonkeysLegion\Queue\Factory\QueueFactory::class)->make();
+    },
+
+    \MonkeysLegion\Queue\Dispatcher\QueueDispatcher::class => static function ($c) {
+        return new \MonkeysLegion\Queue\Dispatcher\QueueDispatcher(
+            $c->get(\MonkeysLegion\Queue\Contracts\QueueInterface::class)
+        );
+    },
 ];

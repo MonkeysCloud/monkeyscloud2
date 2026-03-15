@@ -13,6 +13,7 @@ use App\Repository\OrganizationMemberRepository;
 use App\Repository\OrganizationRepository;
 use App\Repository\RepositoryRepository;
 use App\Repository\StackConfigRepository;
+use MonkeysLegion\Queue\Contracts\QueueInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 #[Middleware('auth')]
@@ -26,6 +27,7 @@ final class ProjectController extends AbstractController
         private OrganizationRepository $orgRepo,
         private RepositoryRepository $repoRepo,
         private StackConfigRepository $stackConfigRepo,
+        private QueueInterface $queue,
     ) {
     }
 
@@ -313,7 +315,38 @@ final class ProjectController extends AbstractController
     #[Route(methods: 'DELETE', path: '/api/v1/projects/{projectId}', name: 'projects.destroy', summary: 'Delete project', tags: ['Projects'])]
     public function destroy(ServerRequestInterface $request, int $projectId): Response
     {
-        return $this->json(null, 204);
+        $userId = $this->userId($request);
+        if (!$userId) {
+            return $this->json(['error' => 'Authentication required.'], 401);
+        }
+
+        $project = $this->projectRepo->find($projectId);
+        if (!$project) {
+            return $this->json(['error' => 'Project not found.'], 404);
+        }
+
+        // Mark project as "deleting" so the UI can show a status indicator
+        try {
+            $pdo = $this->projectRepo->qb->pdo();
+            $stmt = $pdo->prepare('UPDATE projects SET status = :status, updated_at = NOW() WHERE id = :id');
+            $stmt->execute(['status' => 'deleting', 'id' => $projectId]);
+        } catch (\Throwable $e) {
+            error_log('PROJECT_DELETE_MARK ERROR: ' . $e->getMessage());
+            return $this->json(['error' => 'Failed to initiate deletion.'], 500);
+        }
+
+        // Dispatch the heavy deletion to a background queue job
+        try {
+            $this->queue->push([
+                'job'     => 'App\\Job\\DeleteProjectJob',
+                'payload' => ['projectId' => $projectId],
+            ], 'default');
+        } catch (\Throwable $e) {
+            error_log('PROJECT_DELETE_DISPATCH ERROR: ' . $e->getMessage());
+            return $this->json(['error' => 'Failed to queue deletion job.'], 500);
+        }
+
+        return $this->json(['message' => 'Project deletion started.'], 202);
     }
 
     // --- Environments ---
